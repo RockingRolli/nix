@@ -10,9 +10,7 @@
   ];
 
   boot.loader.grub.enable = true;
-  # lib.mkForce needed until hosts/hardware/proj-api.nix placeholder is
-  # regenerated at install time (placeholder incorrectly uses /dev/sda).
-  boot.loader.grub.device = lib.mkForce "/dev/vda";
+  boot.loader.grub.device = "/dev/vda";
   boot.loader.grub.useOSProber = true;
 
   networking.hostName = "proj-api";
