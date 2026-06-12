@@ -8,6 +8,11 @@
     PAGER = "less -R";
   };
 
+  # Global justfile + its modules, deployed to ~/.config/just/ where
+  # `just --global-justfile` (a.k.a. `just -g`) looks for them.
+  xdg.configFile."just/justfile".source = ./justfile;
+  xdg.configFile."just/tasks/system.just".source = ./tasks/system.just;
+
   # User-scope dev tooling. Lives here so it travels with the user, not the host.
   # uv-installed Python interpreters and rustup toolchains rely on nix-ld at the
   # system level (see modules/base.nix).
@@ -89,6 +94,22 @@
       mkcd = ''
         mkdir -p $argv[1]
         and cd $argv[1]
+      '';
+
+      # Wraps `just` so it picks the local justfile if one exists anywhere
+      # in the directory ancestry (matching just's own search behaviour),
+      # otherwise falls back to the global one at ~/.config/just/justfile.
+      # Lets `just system::pull` work from any directory.
+      just = ''
+        set -l dir $PWD
+        while test "$dir" != /
+            if test -f "$dir/justfile"; or test -f "$dir/Justfile"; or test -f "$dir/.justfile"
+                command just $argv
+                return $status
+            end
+            set dir (dirname "$dir")
+        end
+        command just --global-justfile $argv
       '';
     };
 
