@@ -23,9 +23,14 @@
       url = "github:sodiboo/niri-flake";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+
+    dms = {
+      url = "github:AvengeMedia/DankMaterialShell/stable";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
-  outputs = { self, nixpkgs, home-manager, agenix, claude-code-nix, niri-flake, ... }:
+  outputs = { self, nixpkgs, home-manager, agenix, claude-code-nix, niri-flake, dms, ... }:
     let
       system = "x86_64-linux";
       pkgs = nixpkgs.legacyPackages.${system};
@@ -34,7 +39,7 @@
       hmModule = {
         home-manager.useGlobalPkgs = true;
         home-manager.useUserPackages = true;
-        home-manager.extraSpecialArgs = { inherit claude-code-nix niri-flake; };
+        home-manager.extraSpecialArgs = { inherit claude-code-nix niri-flake dms; };
         # users.<name>.imports is owned by each host file so GUI hosts can layer
         # gui.nix on top of common.nix without affecting headless hosts.
       };
@@ -45,7 +50,7 @@
       mkHost = hostFile:
         nixpkgs.lib.nixosSystem {
           inherit system;
-          specialArgs = { inherit agenix claude-code-nix niri-flake; };
+          specialArgs = { inherit agenix claude-code-nix niri-flake dms; };
           modules = [
             hostFile
             agenix.nixosModules.default
@@ -61,7 +66,7 @@
       mkUniformHost = name:
         nixpkgs.lib.nixosSystem {
           inherit system;
-          specialArgs = { inherit agenix claude-code-nix niri-flake; };
+          specialArgs = { inherit agenix claude-code-nix niri-flake dms; };
           modules = [
             ./hosts/hardware/${name}.nix
             ./modules/base.nix
@@ -85,7 +90,7 @@
 
       homeConfigurations.rvo = home-manager.lib.homeManagerConfiguration {
         inherit pkgs;
-        extraSpecialArgs = { inherit claude-code-nix niri-flake; };
+        extraSpecialArgs = { inherit claude-code-nix niri-flake dms; };
         modules = [
           ./home/common.nix
           {
