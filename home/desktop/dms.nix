@@ -1,11 +1,13 @@
 { config, pkgs, lib, dms, ... }:
 
-# DankMaterialShell at the home-manager layer. dms.homeModules.niri adds
-# the niri-side integration glue (recommended in the DMS docs).
+# DankMaterialShell at the home-manager layer.
+# Note: dms.homeModules.niri is NOT imported here — it depends on
+# niri-flake's programs.niri.settings/config.lib.niri.actions which are
+# not available on the nixpkgs path. DMS niri keybind integration is
+# managed via `dms setup niri` (interactive TUI) instead.
 {
   imports = [
     dms.homeModules.dank-material-shell
-    dms.homeModules.niri
   ];
 
   programs.dank-material-shell = {

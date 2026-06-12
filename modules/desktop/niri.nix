@@ -1,21 +1,24 @@
-{ config, pkgs, lib, niri-flake, ... }:
+{ config, pkgs, lib, ... }:
 
-# Niri compositor at the system level. The user-side niri config (keybinds,
-# outputs) lives in home/desktop/niri.nix.
+# System-side desktop: niri compositor + DMS panel/shell + greetd autologin.
+# Uses the nixpkgs path per DMS docs (https://danklinux.com/docs/dankmaterialshell/nixos):
+# nixpkgs ships both programs.niri and programs.dms-shell as first-class options
+# in 26.05. DMS owns ~/.config/niri/* as user-mutable state — populated once per
+# VM via `dms setup niri` (interactive TUI) after install.
 {
-  imports = [ niri-flake.nixosModules.niri ];
-
   programs.niri.enable = true;
 
-  # Use the nixpkgs niri build instead of niri-flake's source-built variant.
-  # Avoids eval-time `builtins.fetchGit` calls (needed by niri's Cargo
-  # dependencies like pipewire-rs) that block first-install bootstraps where
-  # git isn't on PATH yet. nixpkgs niri 26.04 matches niri-flake's niri-stable.
-  programs.niri.package = pkgs.niri;
+  programs.dms-shell = {
+    enable = true;
+    systemd = {
+      enable = true;
+      restartIfChanged = true;
+    };
+  };
 
-  # Niri prefers the gtk portal. The base portal module is enabled in
-  # ../desktop.nix; this adds the niri-specific preference.
-  xdg.portal.config.niri.default = [ "gtk" ];
+  # Note: xdg.portal.config.niri.default is already set by nixpkgs's own
+  # programs/wayland/niri.nix (to "gnome;gtk"). We do not override it here;
+  # the base portal module in ../desktop.nix enables xdg-desktop-portal.
 
   # greetd autologin via initial_session: greetd itself runs the PAM session
   # opening for rvo without prompting, then execs niri-session. This is the
@@ -26,15 +29,10 @@
   services.greetd = {
     enable = true;
     settings = {
-      # tuigreet does PAM login on subsequent prompts (after logout or if
-      # initial_session ever fails). User sees a real password prompt here.
       default_session = {
         command = "${pkgs.greetd.tuigreet}/bin/tuigreet --time --remember --cmd niri-session";
         user = "greeter";
       };
-      # First-boot autologin: greetd itself does PAM auth for rvo without
-      # prompting, then exec niri-session. This is the right place for
-      # autologin (tuigreet 0.9.1 has no --autologin flag of its own).
       initial_session = {
         command = "niri-session";
         user = "rvo";
