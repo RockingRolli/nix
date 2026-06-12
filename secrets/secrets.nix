@@ -11,13 +11,13 @@
 
 let
   proj-api = "ssh-ed25519 AAAA__REPLACE_WITH_proj-api_HOST_KEY__";
-  proj-web = "ssh-ed25519 AAAA__REPLACE_WITH_proj-web_HOST_KEY__";
+  tepavi-dev = "ssh-ed25519 AAAA__REPLACE_WITH_tepavi-dev_HOST_KEY__";
 
   # Personal age/SSH keys that should also be able to decrypt (so you can
   # `agenix -e` from your laptop). Add your laptop's SSH pubkey here.
   rvo-laptop = "ssh-ed25519 AAAA__REPLACE_WITH_LAPTOP_KEY__";
 
-  all = [ proj-api proj-web rvo-laptop ];
+  all = [ proj-api tepavi-dev rvo-laptop ];
 in
 {
   "example-token.age".publicKeys = all;

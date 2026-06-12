@@ -5,39 +5,58 @@ flake.
 
 - One `nixosConfigurations.<vm>` per project VM. Mix-and-match by which modules
   the host file imports.
-- `home/fish.nix` is the constant: identical fish/git/dev-tool setup across
-  every VM, plus a standalone `homeConfigurations.rvo` so the same config works
-  on Fedora.
+- `home/common.nix` is the constant: identical fish/git/dev-tool/Claude-Code
+  setup across every machine, plus a standalone `homeConfigurations.rvo` so
+  the same config works on non-NixOS hosts (e.g. Fedora).
 - `nix-ld` is enabled at the system level so `uv`, `pnpm`, and `rustup` work
   without per-project `.nix` files. Project repos stay clean — reproducibility
   there comes from `uv.lock` / `pnpm-lock.yaml` / `Cargo.lock`.
+- Project-level services (postgres, redis, etc.) run via podman inside the
+  project repo, not as NixOS service modules. The host config only enables
+  podman; what runs on top is the project's concern.
 
 ## Layout
 
 ```
-flake.nix                  # inputs (pinned) + nixosConfigurations + homeConfigurations.rvo
+flake.nix                  # inputs + mkHost + mkUniformHost + outputs
 modules/
-  base.nix                 # nix-ld, user, ssh, podman, firewall, flakes
-  code-server.nix          # OPTIONAL: services.code-server on 127.0.0.1
-  postgres.nix             # OPTIONAL: services.postgresql
+  base.nix                 # nix-ld, user, ssh, podman, firewall, flakes, sudo rules
+  desktop.nix              # GUI base (stub) — wayland/audio/fonts when needed
+  laptop.nix               # imports desktop + mobility extras (stub)
+  workstation.nix          # imports desktop + heavier-hardware extras (stub)
+  services/
+    code-server.nix        # OPTIONAL: services.code-server on 127.0.0.1
 home/
-  fish.nix                 # shared user config (fish + dev tools)
+  common.nix               # shared user config (fish + dev tools + Claude Code)
+  gui.nix                  # GUI-only HM bits (stub)
+  justfile + tasks/*.just  # global justfile deployed to ~/.config/just/
 hosts/
-  proj-api.nix             # base + code-server + postgres
-  proj-web.nix             # base only
+  proj-api.nix             # base + code-server (one-off)
+  tepavi-dev.nix             # base only (one-off)
   hardware/
     proj-api.nix           # placeholder; regenerate on install
-    proj-web.nix
+    tepavi-dev.nix           # real config captured from the VM
 secrets/
   secrets.nix              # agenix recipients (host pubkeys)
   *.age                    # encrypted secrets (created with agenix CLI)
 ```
 
+## Two ways to define a host
+
+The flake exposes two builders:
+
+| Use | When |
+|---|---|
+| `mkHost ./hosts/<name>.nix` | One-off host with custom imports. Each `hosts/<name>.nix` is a thin imports list. Use this for proj-api, tepavi-dev, future laptop/workstation. |
+| `mkUniformHost <name>` | Dev-VM fleet where every host looks identical except hostname + hardware. Names go in the `uniformHosts` list. Currently empty — add a name + a matching `hosts/hardware/<name>.nix` and the host appears. |
+
+Both coexist in `nixosConfigurations`.
+
 ## Day-to-day workflow
 
 ```
 nixos-rebuild switch --flake github:RockingRolli/nix#proj-api
-nixos-rebuild switch --flake github:RockingRolli/nix#proj-web
+nixos-rebuild switch --flake github:RockingRolli/nix#tepavi-dev
 ```
 
 Local iteration (cloned repo):
@@ -52,11 +71,11 @@ as if the file does not exist.
 
 ## Adding/removing a feature
 
-A host file is just an imports list. Add code-server to `proj-web`:
+A host file is just an imports list. Add code-server to `tepavi-dev`:
 
 ```nix
 imports = [
-  ./hardware/proj-web.nix
+  ./hardware/tepavi-dev.nix
   ../modules/base.nix
   ../modules/code-server.nix
 ];

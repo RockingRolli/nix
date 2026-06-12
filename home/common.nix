@@ -1,4 +1,4 @@
-{ config, pkgs, lib, ... }:
+{ config, pkgs, lib, claude-code-nix, ... }:
 
 {
   home.stateVersion = lib.mkDefault "26.05";
@@ -16,7 +16,7 @@
   # User-scope dev tooling. Lives here so it travels with the user, not the host.
   # uv-installed Python interpreters and rustup toolchains rely on nix-ld at the
   # system level (see modules/base.nix).
-  home.packages = with pkgs; [
+  home.packages = (with pkgs; [
     uv
     nodejs_22
     pnpm
@@ -36,6 +36,8 @@
     zoxide
     direnv
     btop
+  ]) ++ [
+    claude-code-nix.packages.${pkgs.stdenv.hostPlatform.system}.default
   ];
 
   programs.git = {

@@ -4,8 +4,9 @@
   imports = [
     ./hardware/proj-api.nix
     ../modules/base.nix
-    ../modules/code-server.nix
-    ../modules/postgres.nix
+    ../modules/services/code-server.nix
+    # For project-level services (postgres, redis, etc.) use podman inside the
+    # project repo instead of declaring them at the NixOS layer.
   ];
 
   networking.hostName = "proj-api";

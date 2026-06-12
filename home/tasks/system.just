@@ -1,12 +1,11 @@
-host := `hostname`
 flake := "github:RockingRolli/nix"
 
-# Rebuild and switch to the latest config from github
-pull:
+# Rebuild and switch to the latest config from github (override host for renames)
+pull host=`hostname`:
     sudo nixos-rebuild switch --flake {{flake}}#{{host}} --refresh
 
 # Apply config in memory only (rescue with reboot if broken)
-test:
+test host=`hostname`:
     sudo nixos-rebuild test --flake {{flake}}#{{host}} --refresh
 
 # Roll back to the previous generation
@@ -19,7 +18,7 @@ gc:
     sudo nix-store --optimise
 
 # Show what would change vs. what is currently installed
-diff:
+diff host=`hostname`:
     #!/usr/bin/env bash
     set -euo pipefail
     out=$(mktemp -d)/result
