@@ -17,15 +17,20 @@
   # ../desktop.nix; this adds the niri-specific preference.
   xdg.portal.config.niri.default = [ "gtk" ];
 
-  # greetd autologins rvo straight into a niri-session. To require a
-  # password later, swap default_session.command for
-  # "${pkgs.greetd.tuigreet}/bin/tuigreet --cmd niri-session".
+  # greetd uses tuigreet with --autologin so the PAM/logind transition runs
+  # cleanly (session 1 → class=user, seat0/tty1 properly assigned). niri
+  # gets DRM master and graphical-session.target activates. To require a
+  # password later, drop the --autologin flag.
   services.greetd = {
     enable = true;
     settings = {
       default_session = {
-        command = "${pkgs.niri}/bin/niri-session";
-        user = "rvo";
+        # tuigreet handles the PAM login (even auto), so logind promotes the
+        # session from class=greeter to class=user with proper seat0/tty1
+        # assignment. niri then gets a real DRM master and graphical-session
+        # .target activates (which DMS's systemd unit depends on).
+        command = "${pkgs.greetd.tuigreet}/bin/tuigreet --time --remember --cmd niri-session --autologin rvo";
+        user = "greeter";
       };
     };
   };
