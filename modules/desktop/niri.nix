@@ -16,6 +16,12 @@
     };
   };
 
+  # Equivalent of `systemctl --user add-wants niri.service dms` from the DMS
+  # Fedora docs: ensures dms.service is started as part of niri's startup
+  # chain (after niri exports WAYLAND_DISPLAY etc.) rather than racing in
+  # parallel from graphical-session.target activation.
+  systemd.user.services.niri.wants = [ "dms.service" ];
+
   # Note: xdg.portal.config.niri.default is already set by nixpkgs's own
   # programs/wayland/niri.nix (to "gnome;gtk"). We do not override it here;
   # the base portal module in ../desktop.nix enables xdg-desktop-portal.
