@@ -21,21 +21,29 @@ flake.
 flake.nix                  # inputs + mkHost + mkUniformHost + outputs
 modules/
   base.nix                 # nix-ld, user, ssh, podman, firewall, flakes, sudo rules
-  desktop.nix              # GUI base (stub) — wayland/audio/fonts when needed
+  desktop.nix              # GUI base: pipewire, polkit, networkmanager, fonts, dconf, xdg-portal
+  desktop/
+    niri.nix               # programs.niri.enable + greetd autologin to niri-session
+    vm.nix                 # spice-vdagentd + qemuGuest (guest-side conveniences)
   laptop.nix               # imports desktop + mobility extras (stub)
   workstation.nix          # imports desktop + heavier-hardware extras (stub)
   services/
     code-server.nix        # OPTIONAL: services.code-server on 127.0.0.1
 home/
-  common.nix               # shared user config (fish + dev tools + Claude Code)
-  gui.nix                  # GUI-only HM bits (stub)
+  common.nix               # shared user config: fish + dev tools + Claude Code
+  gui.nix                  # GUI HM base: foot + GTK/Qt theming; imports desktop/{niri,dms}
+  desktop/
+    niri.nix               # niri HM config (keybindings + outputs)
+    dms.nix                # DMS home modules + niri integration
   justfile + tasks/*.just  # global justfile deployed to ~/.config/just/
 hosts/
-  proj-api.nix             # base + code-server (one-off)
-  tepavi-dev.nix             # base only (one-off)
+  proj-api.nix             # base + code-server (one-off, headless)
+  tepavi-dev.nix           # base only (one-off, headless)
+  dev-desktop.nix          # base + desktop + desktop/niri + desktop/vm (GUI VM)
   hardware/
-    proj-api.nix           # placeholder; regenerate on install
-    tepavi-dev.nix           # real config captured from the VM
+    proj-api.nix
+    tepavi-dev.nix
+    dev-desktop.nix        # placeholder until install regenerates
 secrets/
   secrets.nix              # agenix recipients (host pubkeys)
   *.age                    # encrypted secrets (created with agenix CLI)
@@ -64,6 +72,10 @@ Local iteration (cloned repo):
 ```
 sudo nixos-rebuild switch --flake .#proj-api
 ```
+
+The `dev-desktop` host adds a SPICE-accessed niri+DMS desktop on top of the
+same base. Connect via virt-manager's built-in viewer (libvirt) or
+Proxmox's SPICE button — greetd auto-logs rvo into niri.
 
 **Git gotcha:** flakes only see files that are tracked by git. After creating
 or renaming any file, run `git add <path>` before rebuilding or Nix will act
