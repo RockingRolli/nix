@@ -22,6 +22,12 @@
   # parallel from graphical-session.target activation.
   systemd.user.services.niri.wants = [ "dms.service" ];
 
+  # Quickshell (spawned by dms.service) is a Qt app. Without QT_QPA_PLATFORM
+  # explicitly set, Qt defaults to xcb (X11), fails to find DISPLAY, and exits
+  # with "cannot open display:". Forcing wayland selects the wayland Qt
+  # platform plugin instead.
+  systemd.user.services.dms.environment.QT_QPA_PLATFORM = "wayland";
+
   # Note: xdg.portal.config.niri.default is already set by nixpkgs's own
   # programs/wayland/niri.nix (to "gnome;gtk"). We do not override it here;
   # the base portal module in ../desktop.nix enables xdg-desktop-portal.
