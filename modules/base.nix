@@ -58,6 +58,9 @@
       { command = "/run/current-system/sw/bin/nixos-rebuild"; options = [ "NOPASSWD" "SETENV" ]; }
       { command = "/run/current-system/sw/bin/nix-collect-garbage"; options = [ "NOPASSWD" ]; }
       { command = "/run/current-system/sw/bin/nix-store"; options = [ "NOPASSWD" ]; }
+      { command = "/run/current-system/sw/bin/reboot"; options = [ "NOPASSWD" ]; }
+      { command = "/run/current-system/sw/bin/shutdown"; options = [ "NOPASSWD" ]; }
+      { command = "/run/current-system/sw/bin/poweroff"; options = [ "NOPASSWD" ]; }
     ];
   }];
 
