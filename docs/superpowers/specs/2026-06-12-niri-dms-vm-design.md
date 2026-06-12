@@ -1,7 +1,7 @@
 # Minimal niri+DMS desktop VM — design
 
 **Date:** 2026-06-12
-**Status:** approved by user; ready for implementation plan
+**Status:** shipped 2026-06-12 with an architecture pivot from the original design; current architecture documented below. Original design (niri-flake + DMS HM modules) was abandoned mid-implementation — see "Architecture pivot" section.
 
 ## Goal
 
@@ -15,8 +15,8 @@ desktop without architectural changes.
 The structural goal is equally important: the new modules establish the
 "desktop / compositor / VM-display" axes so a future `hosts/laptop.nix` and
 `hosts/workstation.nix` can reuse them with no copy-paste — the laptop imports
-`modules/desktop.nix` + `modules/desktop/niri.nix` + `modules/laptop.nix`,
-and inherits the same niri+DMS user-side config from `home/desktop/`.
+`modules/desktop.nix` + `modules/desktop/niri.nix` and inherits the same
+system-level niri+DMS config.
 
 ## Confirmed constraints (from brainstorming)
 
@@ -29,188 +29,177 @@ and inherits the same niri+DMS user-side config from `home/desktop/`.
   ancillary conveniences (clipboard sharing, dynamic resolution,
   cooperative shutdown), not to make display work.
 - **Login flow:** autologin straight into niri via greetd. No password prompt.
-- **Compositor + shell:** niri (via `github:sodiboo/niri-flake`) + DMS (via
-  `github:AvengeMedia/DankMaterialShell/stable`).
 - **Audio:** PipeWire enabled from day one — DMS uses it for per-app volume
   state in the panel.
-- **Module modularity:** subdirectory split (`modules/desktop/`,
-  `home/desktop/`) rather than flat. User has previously expressed preference
-  for "more modular, not less" when the split is likely to be needed anyway.
+- **Module modularity:** subdirectory split (`modules/desktop/`) rather than
+  flat. User has previously expressed preference for "more modular, not less"
+  when the split is likely to be needed anyway.
 
-## Verified package availability
+## Architecture pivot (post-mortem)
 
-- `niri` in `nixpkgs/nixos-26.05`: version 26.04. Module also re-exposed by
-  `niri-flake` with richer config surface.
-- `quickshell` in `nixpkgs/nixos-26.05`: 0.3.0 — meets DMS's stated minimum.
-- `dms` flake at `github:AvengeMedia/DankMaterialShell` exposes
-  `nixosModules.dank-material-shell`, `homeModules.dank-material-shell`, and
-  `homeModules.niri`. `/stable` branch is the recommended pin.
-- `spice-vdagent`, `qemu-guest-agent`, `greetd`, `pipewire`, `foot` — all
-  in nixpkgs.
+**What the original design called for:** two new flake inputs (`niri-flake`
+from `github:sodiboo/niri-flake` and `dms` from
+`github:AvengeMedia/DankMaterialShell/stable`), HM modules for both
+(`niri-flake.homeModules.niri` for declarative niri config, and
+`dms.homeModules.dank-material-shell` + `dms.homeModules.niri` for DMS),
+and home module files under `home/desktop/{niri,dms}.nix` imported by
+`home/gui.nix`. All niri keybindings were to be declared via niri-flake's
+`programs.niri.settings` schema (fully declarative).
 
-## Architecture
+**Why it failed:** niri-flake's HM module makes `~/.config/niri/config.kdl`
+a read-only symlink into `/nix/store`. DMS's `dms setup niri` onboarding flow
+assumes `~/.config/niri/config.kdl` is mutable user state — it reads the
+existing file, merges its output-section fragments into it, and rewrites it.
+These two systems compete for ownership of the same file, and neither can win
+cleanly. A `home-manager.backupFileExtension = "backup"` workaround was added
+during the initial pass but only masked the conflict: every `home-manager
+switch` would clobber any manual niri config changes.
 
-### Flake inputs (two new)
+**Why the nixpkgs path is the right one:** reading DMS's own docs
+(https://danklinux.com/docs/dankmaterialshell/nixos and
+https://danklinux.com/docs/dankmaterialshell/nixos-flake) reveals that the
+docs-canonical path is `programs.dms-shell` from nixpkgs plus a post-install
+`dms setup` TUI step. DMS is architecturally built around the assumption that
+the user mutates their compositor config imperatively via the `dms` tool. The
+HM-declarative path is not documented because it fights the tool's own
+config-management model. The right lesson: when integrating a tool that has
+its own runtime config-management semantics, let the tool own the files it
+claims. The cost is a one-time per-machine setup step; the win is no
+file-ownership fights and no `home-manager switch` clobbering user config.
 
-```nix
-niri-flake = {
-  url = "github:sodiboo/niri-flake";
-  inputs.nixpkgs.follows = "nixpkgs";
-};
-dms = {
-  url = "github:AvengeMedia/DankMaterialShell/stable";
-  inputs.nixpkgs.follows = "nixpkgs";
-};
-```
+**What shipped:** both flake inputs were dropped, `home/desktop/{niri,dms}.nix`
+were deleted, and all niri+DMS config moved to the system level. Commits
+`a45426a`..`2121e81` cover the pivot.
 
-Both passed through `extraSpecialArgs` to home-manager so home modules can
-consume them — same pattern already used for `claude-code-nix`.
+## Architecture (shipped)
 
-### Module tree (new files marked NEW; FILL-IN = stub gets populated)
+### Flake inputs
+
+No new flake inputs for niri or DMS. Both are available in nixpkgs-26.05:
+`programs.niri.enable` (nixpkgs module) and `programs.dms-shell.enable`
+(nixpkgs module). No external flakes needed.
+
+### Module tree (shipped)
 
 ```
 modules/
   base.nix
-  desktop.nix             FILL-IN: GUI base — PipeWire, polkit, NetworkManager, system fonts
+  desktop.nix              GUI base — PipeWire, polkit, NetworkManager, system fonts
   desktop/
-    niri.nix              NEW: programs.niri.enable, xdg-desktop-portal, greetd autologin
-    vm.nix                NEW: spice-vdagentd, qemu-guest service
-  laptop.nix              existing stub
-  workstation.nix         existing stub
+    niri.nix               programs.niri.enable, programs.dms-shell.enable,
+                           greetd autologin (initial_session), tuigreet default_session
+    vm.nix                 spice-vdagentd, qemu-guest service
+  laptop.nix               existing stub
+  workstation.nix          existing stub
   services/
     code-server.nix
 home/
   common.nix
-  gui.nix                 FILL-IN: foot terminal, fonts theming, GTK/Qt theming
-  desktop/
-    niri.nix              NEW: niri HM config via niri-flake's HM module (keybindings, outputs)
-    dms.nix               NEW: imports dms.homeModules.dank-material-shell + dms.homeModules.niri
+  gui.nix                  foot terminal, GTK/Qt theming, fontconfig
+                           (NO desktop/ imports — DMS owns niri config)
+hosts/
+  dev-desktop.nix
+  hardware/
+    dev-desktop.nix
 ```
+
+Note: `home/desktop/` does not exist. `home/gui.nix` is purely terminal +
+theming; it does not import any niri or DMS home modules.
 
 ### Host file
 
-- `hosts/dev-desktop.nix` (NEW): thin imports list —
-  `./hardware/dev-desktop.nix` + `../modules/base.nix` +
-  `../modules/desktop.nix` + `../modules/desktop/niri.nix` +
-  `../modules/desktop/vm.nix`, plus `networking.hostName = "dev-desktop"` and
-  `system.stateVersion = "26.05"`.
-- `hosts/hardware/dev-desktop.nix` (NEW, placeholder): regenerated at install
-  time from the actual VM via `nixos-generate-config`.
+- `hosts/dev-desktop.nix`: imports `./hardware/dev-desktop.nix` +
+  `../modules/base.nix` + `../modules/desktop.nix` +
+  `../modules/desktop/niri.nix` + `../modules/desktop/vm.nix`, plus
+  `networking.hostName = "dev-desktop"` and `system.stateVersion = "26.05"`.
+- `hosts/hardware/dev-desktop.nix`: placeholder; regenerated at install time.
 
 ### Host-to-home-manager wiring
 
-The current flake.nix sets `home-manager.users.rvo = import ./home/common.nix;`
-inside the shared `hmModule`. This bakes in "everyone gets exactly common.nix"
-which makes adding `gui.nix` for GUI hosts awkward.
+`hmModule` was refactored to remove `users.rvo` ownership. Each host file
+declares its own `home-manager.users.rvo.imports`:
 
-**Decision:** move ownership of the user's home-manager module list from
-`hmModule` to each host file. `hmModule` retains the wiring concerns
-(`useGlobalPkgs`, `useUserPackages`, `extraSpecialArgs`); each host explicitly
-declares which home modules its user gets:
-
-- **Headless hosts** (`hosts/proj-api.nix`, `hosts/tepavi-dev.nix`, and any
-  `mkUniformHost` member): `home-manager.users.rvo.imports = [ ../home/common.nix ];`
-- **GUI hosts** (`hosts/dev-desktop.nix`, future laptop, workstation):
+- **Headless hosts** (`hosts/proj-api.nix`, `hosts/tepavi-dev.nix`):
+  `home-manager.users.rvo.imports = [ ../home/common.nix ];`
+- **GUI hosts** (`hosts/dev-desktop.nix`):
   `home-manager.users.rvo.imports = [ ../home/common.nix ../home/gui.nix ];`
 
-`home/gui.nix` itself imports `./desktop/niri.nix` and `./desktop/dms.nix`,
-so GUI hosts get the full niri+DMS user config by listing one file rather
-than three.
+`home/gui.nix` carries foot, GTK/Qt theming, and fontconfig — it does NOT
+import `home/desktop/` files (that directory doesn't exist in the shipped
+architecture).
 
-**Refactor side-effect:** the implementation must update `mkHost`/`mkUniformHost`
-in flake.nix to stop setting `users.rvo`, and update the existing
-`hosts/proj-api.nix` and `hosts/tepavi-dev.nix` to declare it themselves.
-Small change; preserves current behavior for those hosts.
-
-## Component details
+## Component details (shipped)
 
 ### `modules/desktop.nix` (GUI base — shared by every GUI host)
 
 - `services.pipewire` enabled with `pulse`, `alsa`, `wireplumber`.
-- `security.polkit.enable = true;` (already implied by lots of GUI stack,
-  but explicit).
-- `networking.networkmanager.enable = true;` (replaces direct
-  `networking.useDHCP` for GUI hosts since users expect to manage Wi-Fi
-  imperatively on real machines; harmless in the VM).
+- `security.polkit.enable = true;`
+- `networking.networkmanager.enable = true;`
 - `fonts.packages` with `inter` and `material-symbols` (DMS expects both),
-  plus `nerd-fonts.jetbrains-mono` to render tide's prompt glyphs in foot
-  and any other future terminal.
-- `programs.dconf.enable = true;` (GTK theming bridge).
+  plus `nerd-fonts.jetbrains-mono`.
+- `programs.dconf.enable = true;`
 - `xdg.portal.enable = true;` + `xdg.portal.extraPortals` with
-  `xdg-desktop-portal-gtk` — provides file pickers, screenshare to apps that
-  ask the portal.
+  `xdg-desktop-portal-gtk`.
 
-### `modules/desktop/niri.nix` (niri-specific system bits)
+### `modules/desktop/niri.nix` (niri + DMS, shipped)
 
-- Imports `niri-flake.nixosModules.niri`.
-- `programs.niri.enable = true;`.
-- `services.greetd` with `default_session.command = "${pkgs.niri}/bin/niri-session"`
-  and `default_session.user = "rvo"` — this is the autologin.
-- `xdg.portal.config.niri.default = [ "gtk" ];` — wire niri to the GTK portal.
+This single file carries all niri+DMS system config. No niri-flake import.
+
+- `programs.niri.enable = true;` (nixpkgs module).
+- `programs.dms-shell.enable = true;` + `systemd.user.targets.dms-shell.wantedBy = [ "graphical-session.target" ];` for DMS autostart.
+- `services.greetd` configured with two sessions:
+  - `initial_session` (autologin): `command = "niri-session"`, `user = "rvo"` — greetd autologs in on first start.
+  - `default_session` (fallback): `command = "${pkgs.greetd.tuigreet}/bin/tuigreet --cmd niri-session"` — what greetd shows after a session exits.
+- `xdg.portal.config.niri.default = [ "gtk" ];`
+
+**Important:** niri's user-side config (`~/.config/niri/config.kdl` and
+`~/.config/niri/dms/*.kdl` fragments) is **mutable user state, owned by DMS**.
+It is NOT managed by Nix/HM. It is deployed once per VM via the `dms setup niri`
+TUI step documented in the bootstrap path below. This is a deliberate trade:
+accept one manual per-VM setup step; avoid file-ownership fights forever.
 
 ### `modules/desktop/vm.nix` (guest agents for hypervisor conveniences)
 
-Pixels and input already work without this module — virt-manager / Proxmox
-negotiate SPICE with QEMU on the host side, and the guest renders to the
-default virtio-gpu surface. This module adds the *conveniences* on top:
+Pixels and input already work without this module. This adds:
 
 - `services.spice-vdagentd.enable = true;` — clipboard sharing host↔guest
-  and dynamic resolution match when virt-viewer/remote-viewer window
-  resizes.
-- `services.qemuGuest.enable = true;` — qemu-ga socket; lets the hypervisor
-  do graceful shutdowns via libvirt's API and time-sync after host suspend.
-  ACPI shutdown still works without this; qemu-ga is the cooperative path.
-- `virtio-gpu` kernel module is pulled in by the `qemu-guest.nix` profile
-  already imported by hardware-configuration; no extra config.
+  and dynamic resolution match when virt-viewer/remote-viewer window resizes.
+- `services.qemuGuest.enable = true;` — qemu-ga socket for graceful
+  hypervisor-initiated shutdowns and time-sync after host suspend.
 
-### `home/gui.nix` (GUI HM base)
+### `home/gui.nix` (GUI HM base — shipped)
 
-- `programs.foot.enable = true;` with a minimal config (font, padding,
-  colors that don't fight DMS's Material theme).
+- `programs.foot.enable = true;` with a minimal config (font, padding).
 - `gtk.enable = true;` with theme/cursor packages.
-- `qt.enable = true;` with `qt.platformTheme = "gtk";` so Qt apps follow
-  GTK theming.
-- `fonts.fontconfig.enable = true;` (HM-side fontconfig).
+- `qt.enable = true;` with `qt.platformTheme = "gtk";`.
+- `fonts.fontconfig.enable = true;`
 
-### `home/desktop/niri.nix` (niri user config)
-
-- Imports `niri-flake`'s home-manager module.
-- `programs.niri.config` populated with starter content:
-  - One output config (size + scale) — assume 1920x1200 for the VM, override
-    later via the SPICE viewer's resize.
-  - Bare-minimum keybindings: Super+Return = foot, Super+D = DMS launcher
-    (via DMS's spawn command), Super+Q = close, Super+Shift+E = quit niri.
-  - Empty `input.touchpad` block ready for later (laptop host will populate).
-- Explicit goal: leave room for the user to iterate — this file is "the
-  thing you'll edit a lot during testbed work."
-
-### `home/desktop/dms.nix` (DMS user config)
-
-- `imports = [ dms.homeModules.dank-material-shell dms.homeModules.niri ];`
-- `programs.dank-material-shell.enable = true;`
-- All feature flags left at defaults initially (they default `true` and pull
-  their deps automatically: dgop, matugen, cava, khal, wtype).
-- A future tuning pass can disable features the VM doesn't need (e.g.,
-  `enableVPN = false;`).
+No niri or DMS imports. No `home/desktop/` subdirectory.
 
 ## Bootstrap path (how the VM gets created)
 
-1. Push the design (this spec) + the implementation (next phase).
+1. Push the shipped config.
 2. Spin up a new VM in Proxmox or libvirt with virtio-gpu, virtio-vga,
    QXL/ICH9 audio if you want sound, and the NixOS minimal ISO mounted.
 3. Boot ISO, partition + format with label `nixos`, mount `/mnt`.
 4. `nixos-generate-config --root /mnt --dir /tmp/cfg`; copy
    `/tmp/cfg/hardware-configuration.nix` to
-   `hosts/hardware/dev-desktop.nix` in the repo (push, or commit to the
+   `hosts/hardware/dev-desktop.nix` in the repo (push or commit to the
    already-pushed branch).
 5. `nixos-install --flake github:RockingRolli/nix#dev-desktop` (or
    `--flake /path/to/clone#dev-desktop` from a local clone).
 6. Reboot, open SPICE viewer against the VM, greetd-autologin lands you in
-   niri running DMS.
+   niri.
+7. **DMS setup (one-time, per-VM):** open a terminal (foot via greetd's
+   tuigreet or a pre-existing keybind), run `dms setup niri`. Follow the TUI
+   prompts. This writes `~/.config/niri/config.kdl` and the DMS fragment
+   files. After this step, DMS's panel and niri integration are active.
+8. Subsequent `nixos-rebuild switch` / `just system::pull` flows do not touch
+   `~/.config/niri/` — that stays as mutable user state owned by DMS and
+   the user.
 
 Once the VM exists, day-to-day workflow uses the existing `just system::pull`
-recipe (recipe takes an optional `host` arg so the first apply after the
-hostname is in place works fine).
+recipe.
 
 ## Verification
 
@@ -219,49 +208,49 @@ hostname is in place works fine).
 - **Build-time:** `nix build .#nixosConfigurations.dev-desktop.config.system.build.toplevel`
   produces a .drv (the existing pattern for the other hosts).
 - **Boot-time:** the VM reaches greetd, autologs in, niri starts, DMS panel
-  appears.
-- **Runtime smoke test:** open foot via Super+Return, type `echo hello`;
-  open DMS launcher via Super+D and see Quickshell render correctly; resize
-  the SPICE viewer window and confirm niri output adjusts.
-- **Clipboard parity:** copy text in guest, paste on host (via SPICE
-  vdagent).
+  appears after `dms setup niri` has been run.
+- **Runtime smoke test:** open foot via a niri keybind; type `echo hello`;
+  resize the SPICE viewer window and confirm niri output adjusts.
+- **Clipboard parity:** copy text in guest, paste on host (via SPICE vdagent).
 
 ## Scope
 
-### In scope
-- Two new flake inputs (niri-flake, DMS /stable).
-- Two new system modules (`desktop/niri.nix`, `desktop/vm.nix`) plus
-  populating `desktop.nix`.
-- Two new home modules (`desktop/niri.nix`, `desktop/dms.nix`) plus
-  populating `gui.nix`.
-- One new host file pair (`hosts/dev-desktop.nix` + `hosts/hardware/dev-desktop.nix`).
-- Plumbing the new flake inputs through `extraSpecialArgs` for both
-  nixosSystem and the standalone `homeConfigurations.rvo`.
-- README updates reflecting the new host + module shape.
+### In scope (shipped)
 
-### Out of scope (deferred to later passes)
-- A real login screen instead of autologin (one greetd config change).
-- Browser, IDE, office tools — added to `home/gui.nix` when they're
-  actually needed for day-to-day work.
-- PAM / swaylock / `loginctl lock-session` — irrelevant under autologin.
-- Per-feature tuning of DMS flags (start with everything enabled, prune
-  what the panel doesn't use).
-- mDNS / `dev-desktop.local` reachability — connect by IP for now.
-- Migrating the laptop and workstation to NixOS — that's the *consumer*
-  of this design's reusable modules, not part of this iteration.
-- Replacing `mutableUsers = false` with a password mechanism — independent
-  decision, tracked separately.
+- `modules/desktop/niri.nix` and `modules/desktop/vm.nix` (new files).
+- Populate `modules/desktop.nix` (GUI base).
+- `home/gui.nix` populated with foot + theming (no desktop/ imports).
+- New host file pair (`hosts/dev-desktop.nix` + `hosts/hardware/dev-desktop.nix`).
+- `hmModule` refactor: move `users.rvo` ownership to each host file.
+- `dms setup niri` one-time per-VM manual step (documented, not automated).
+
+### Out of scope (deferred)
+
+- A real login screen instead of autologin.
+- Browser, IDE, office tools.
+- PAM / swaylock / `loginctl lock-session`.
+- mDNS / `dev-desktop.local` reachability.
+- Migrating the laptop and workstation to NixOS.
+- Declarative niri keybinding management — the user edits
+  `~/.config/niri/config.kdl` directly (or via DMS tooling) for now.
 
 ## Risks / open follow-ups
 
-- **`niri-flake`'s NixOS module vs nixpkgs's `programs.niri.enable`** — both
-  exist. The flake's tracks more recent niri config schema. Default to the
-  flake; if it churns too fast for comfort, switching to nixpkgs is a
-  one-line `imports` change.
-- **`dms.homeModules.niri` content is unknown to me at design time** — the
-  doc says it provides "niri compositor integration" but I haven't read its
-  source. Worst case: import does nothing useful and I drop it during
-  implementation. Doesn't change the design's shape.
+- **`niri-flake` vs nixpkgs's `programs.niri.enable`** — no longer
+  relevant; we use the nixpkgs module. If niri config schema in nixpkgs lags
+  behind niri upstream, revisit then.
+- **DMS HM-module path (realized risk):** the DMS flake's `homeModules`
+  were attempted and abandoned because they fight `dms setup`'s ownership of
+  `~/.config/niri/config.kdl`. Don't revisit this without reading
+  https://danklinux.com/docs/dankmaterialshell/nixos-flake carefully first —
+  the docs-canonical path is the nixpkgs module + `dms setup`, not the HM
+  modules.
+- **Per-VM `dms setup` ritual:** every new VM (or fresh reinstall) requires
+  a manual `dms setup niri` step before the DMS panel is active. This is
+  intentional but worth documenting prominently for new machines. There is no
+  automated way to run this without either bundling a DMS config as a Nix
+  derivation (re-introduces the ownership fight) or writing a custom
+  activation script (fragile). Accept the ritual for now.
 - **SPICE audio routing depends on the hypervisor side**, not the guest. The
   guest will have functioning PipeWire whether or not it reaches the
   hypervisor. Configuring Proxmox/libvirt audio passthrough is the user's
@@ -274,6 +263,3 @@ hostname is in place works fine).
 ## Out of band: spec location
 
 This spec lives at `docs/superpowers/specs/2026-06-12-niri-dms-vm-design.md`.
-The user has not stated a preference for spec location; this is the default
-from the brainstorming workflow. Move freely if it doesn't fit the repo's
-documentation conventions long-term.

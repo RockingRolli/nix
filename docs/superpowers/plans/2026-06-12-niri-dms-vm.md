@@ -1,5 +1,20 @@
 # niri+DMS desktop VM — implementation plan
 
+> **STATUS: SUPERSEDED — historical reference only.**
+>
+> This plan was executed but the architecture was pivoted mid-implementation.
+> Tasks 1–6 and parts of Tasks 9–12 shipped; Tasks 7–8 (the HM-declarative
+> niri+DMS path) were abandoned when niri-flake's HM module and DMS's
+> `dms setup` TUI were found to fight over ownership of
+> `~/.config/niri/config.kdl`. The shipped architecture uses nixpkgs's
+> `programs.niri.enable` + `programs.dms-shell.enable` at the system level
+> only, with no `home/desktop/` directory and no flake inputs for niri or DMS.
+>
+> **Pivot commits:** `a45426a`..`2121e81`
+>
+> **Current architecture:** see the updated spec at
+> `docs/superpowers/specs/2026-06-12-niri-dms-vm-design.md`.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Add a new NixOS host `dev-desktop` to the flake that boots into autologin'd niri + DMS, plus the reusable modules and home-manager fragments that future GUI hosts (laptop, workstation) will share.
@@ -1034,3 +1049,42 @@ No gaps.
 ## Notes on commit style
 
 Recent history uses terse subjects ("tide config", "nopasswd"). The plan's commit messages are slightly longer ("modules/desktop/niri: ...") because they're scoped to a specific subsystem and more useful for future archaeology. If you prefer the existing terse style, shorten each subject to the leading identifier — the meaning carries either way.
+
+---
+
+## Post-implementation pivot
+
+Tasks 1–6 (the module scaffolding, flake inputs, and host file) executed as
+written and remain in the shipped codebase. The pivot happened when Tasks 7–8
+(the HM-declarative niri+DMS path) were attempted.
+
+**What broke:** niri-flake's HM module, when enabled, turns
+`~/.config/niri/config.kdl` into a read-only symlink into the Nix store. DMS's
+onboarding flow (`dms setup niri`) is a TUI that reads the *existing* niri
+config file, appends DMS-specific output-section fragments to it, and rewrites
+it in place. The two systems claim the same file. On the first `home-manager
+switch` after `dms setup niri` ran, HM would replace the mutable file with a
+store symlink, destroying the DMS-written content. Adding
+`home-manager.backupFileExtension = "backup"` let the switch proceed but didn't
+resolve the underlying ownership conflict.
+
+**Why the nixpkgs path is the correct one:** DMS's own documentation at
+https://danklinux.com/docs/dankmaterialshell/nixos describes the
+`programs.dms-shell` nixpkgs module as the canonical NixOS integration path,
+followed by a `dms setup` post-install step. The HM-flake path
+(https://danklinux.com/docs/dankmaterialshell/nixos-flake) exists but is
+explicitly more involved and assumes the user is comfortable with it conflicting
+with `dms setup`. DMS is architected as a config-deploying tool, not a passive
+package — it claims runtime ownership of the files it configures. Wedging it
+into the Nix declarative model fights the tool's design.
+
+**What the pivot delivered (commits `a45426a`..`2121e81`):** both flake inputs
+(`niri-flake`, `dms`) were dropped from `flake.nix`; `home/desktop/niri.nix`
+and `home/desktop/dms.nix` were deleted; `home/gui.nix` was rewritten to
+contain only foot, GTK/Qt theming, and fontconfig (no compositor imports);
+`modules/desktop/niri.nix` was rewritten to use nixpkgs's `programs.niri.enable`
++ `programs.dms-shell.enable` at the system level with greetd
+`initial_session` autologin. Niri's user config (`~/.config/niri/`) is now
+mutable user state, deployed once per VM via `dms setup niri`, and never
+touched by subsequent `nixos-rebuild switch` runs. The `backupFileExtension`
+workaround was removed since it was no longer needed.
