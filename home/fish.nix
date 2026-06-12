@@ -101,6 +101,16 @@
       # otherwise falls back to the global one at ~/.config/just/justfile.
       # Lets `just system::pull` work from any directory.
       just = ''
+        # Pass through unchanged if you already picked a justfile yourself.
+        # `-g*` / `-f*` catch combined short flags like `-gl`, `-fpath`.
+        for arg in $argv
+            switch $arg
+                case '-g*' '-f*' --global-justfile --justfile
+                    command just $argv
+                    return $status
+            end
+        end
+
         set -l dir $PWD
         while test "$dir" != /
             if test -f "$dir/justfile"; or test -f "$dir/Justfile"; or test -f "$dir/.justfile"
