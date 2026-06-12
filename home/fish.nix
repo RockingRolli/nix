@@ -92,24 +92,42 @@
       '';
     };
 
-    interactiveShellInit = ''
+    interactiveShellInit =
+      let
+        # tide preset args. Edit freely — the hash below is derived from this
+        # string, so any change here invalidates the sentinel and triggers
+        # exactly one re-configure on the next shell.
+        tideArgs = ''
+          --style='Rainbow'
+          --rainbow_prompt_separators='Angled'
+          --powerline_prompt_heads='Sharp'
+          --powerline_prompt_tails='Flat'
+          --powerline_prompt_style='Two lines, character and frame'
+          --powerline_right_prompt_frame=No
+          --prompt_colors='True color'
+          --show_time='24-hour format'
+          --lean_prompt_height='Two lines'
+          --prompt_connection=Disconnected
+          --prompt_connection_andor_frame_color=Light
+          --prompt_spacing=Sparse
+          --icons='Many icons'
+          --transient=No
+        '';
+        tideArgsFlat = builtins.replaceStrings [ "\n" ] [ " " ] tideArgs;
+        cfgHash = builtins.substring 0 12 (builtins.hashString "sha256" tideArgs);
+      in
+      ''
         set -gx FZF_DEFAULT_OPTS "--height 40% --layout=reverse --border"
-        
-        tide configure --auto \
-                    --style='Rainbow' \
-                    --rainbow_prompt_separators='Angled' \
-                    --powerline_prompt_heads='Sharp' \
-                    --powerline_prompt_tails='Flat' \
-                    --powerline_prompt_style='Two lines, character and frame' \
-                    --powerline_right_prompt_frame=No \
-                    --prompt_colors='True color' \
-                    --show_time='24-hour format' \
-                    --lean_prompt_height='Two lines' \
-                    --prompt_connection=Disconnected \
-                    --prompt_connection_andor_frame_color=Light \
-                    --prompt_spacing=Sparse \
-                    --icons='Many icons' \
-                    --transient=No
-    '';
+
+        # Apply tide preset only when the nix-side args have actually changed.
+        # `exec fish` lets the next process start with the new universal vars
+        # already in place, so the first prompt is rendered correctly without
+        # the "press Enter to refresh" bug.
+        if functions -q tide; and test "$_tide_cfg_hash" != "${cfgHash}"
+            tide configure --auto ${tideArgsFlat}
+            set -Ux _tide_cfg_hash "${cfgHash}"
+            exec fish
+        end
+      '';
   };
 }
