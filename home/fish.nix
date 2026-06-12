@@ -95,22 +95,21 @@
     interactiveShellInit = ''
         set -gx FZF_DEFAULT_OPTS "--height 40% --layout=reverse --border"
         
-        # Apply tide preset once per user. Sentinel is a universal var, so the
-        # first fish session on a fresh VM configures tide, every subsequent shell
-        # skips this block. Re-run by hand with `set -eU _tide_configured`.
-        if functions -q tide; and not set -q _tide_configured
-            tide configure --auto \
-                --style=Rainbow \
-                --prompt_colors='True color' \
-                --show_time='24-hour format' \
-                --lean_prompt_height='Two lines' \
-                --prompt_connection=Disconnected \
-                --prompt_connection_andor_frame_color=Light \
-                --prompt_spacing=Sparse \
-                --icons='Many icons' \
-                --transient=No
-            set -Ux _tide_configured 1
-        end
+        tide configure --auto \
+                    --style='Rainbow' \
+                    --rainbow_prompt_separators='Angled' \
+                    --powerline_prompt_heads='Sharp' \
+                    --powerline_prompt_tails='Flat' \
+                    --powerline_prompt_style='Two lines, character and frame' \
+                    --powerline_right_prompt_frame=No \
+                    --prompt_colors='True color' \
+                    --show_time='24-hour format' \
+                    --lean_prompt_height='Two lines' \
+                    --prompt_connection=Disconnected \
+                    --prompt_connection_andor_frame_color=Light \
+                    --prompt_spacing=Sparse \
+                    --icons='Many icons' \
+                    --transient=No
     '';
   };
 }
