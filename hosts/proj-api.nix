@@ -9,6 +9,12 @@
     # project repo instead of declaring them at the NixOS layer.
   ];
 
+  boot.loader.grub.enable = true;
+  # lib.mkForce needed until hosts/hardware/proj-api.nix placeholder is
+  # regenerated at install time (placeholder incorrectly uses /dev/sda).
+  boot.loader.grub.device = lib.mkForce "/dev/vda";
+  boot.loader.grub.useOSProber = true;
+
   networking.hostName = "proj-api";
 
   # Example agenix-wired secret. Disabled by default so the flake evaluates

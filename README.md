@@ -131,6 +131,10 @@ provision a VM you need to get NixOS onto it.
    cp /tmp/cfg/hardware-configuration.nix \
       /mnt/etc/nixos-flake/hosts/hardware/proj-api.nix
    ```
+   Note: `boot.loader.grub.*` settings live in `hosts/<name>.nix`, not in
+   `hosts/hardware/<name>.nix`. The hardware file gets overwritten by this
+   copy step at install; bootloader config stays in the host file across
+   regenerations.
 5. Install:
    ```
    nixos-install --flake /mnt/etc/nixos-flake#proj-api

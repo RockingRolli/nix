@@ -9,6 +9,10 @@
     ../modules/desktop/vm.nix
   ];
 
+  boot.loader.grub.enable = true;
+  boot.loader.grub.device = "/dev/vda";
+  boot.loader.grub.useOSProber = true;
+
   networking.hostName = "dev-desktop";
 
   # GUI host: layer gui.nix on top of common.nix. gui.nix imports
