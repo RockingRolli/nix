@@ -70,7 +70,11 @@
           modules = [
             ./hosts/hardware/${name}.nix
             ./modules/base.nix
-            { networking.hostName = name; system.stateVersion = "26.05"; }
+            {
+              networking.hostName = name;
+              system.stateVersion = "26.05";
+              home-manager.users.rvo.imports = [ ./home/common.nix ];
+            }
             agenix.nixosModules.default
             home-manager.nixosModules.home-manager
             hmModule
