@@ -18,19 +18,9 @@
       url = "github:sadjow/claude-code-nix";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-
-    niri-flake = {
-      url = "github:sodiboo/niri-flake";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-
-    dms = {
-      url = "github:AvengeMedia/DankMaterialShell/stable";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
   };
 
-  outputs = { self, nixpkgs, home-manager, agenix, claude-code-nix, niri-flake, dms, ... }:
+  outputs = { self, nixpkgs, home-manager, agenix, claude-code-nix, ... }:
     let
       system = "x86_64-linux";
       pkgs = nixpkgs.legacyPackages.${system};
@@ -39,11 +29,7 @@
       hmModule = {
         home-manager.useGlobalPkgs = true;
         home-manager.useUserPackages = true;
-        # When HM would overwrite an existing user file, move it to <file>.backup
-        # instead of failing activation. Safe one-time price on fresh machines
-        # that already had partial dotfiles; no-op afterwards.
-        home-manager.backupFileExtension = "backup";
-        home-manager.extraSpecialArgs = { inherit claude-code-nix niri-flake dms; };
+        home-manager.extraSpecialArgs = { inherit claude-code-nix; };
         # users.<name>.imports is owned by each host file so GUI hosts can layer
         # gui.nix on top of common.nix without affecting headless hosts.
       };
@@ -54,7 +40,7 @@
       mkHost = hostFile:
         nixpkgs.lib.nixosSystem {
           inherit system;
-          specialArgs = { inherit agenix claude-code-nix niri-flake dms; };
+          specialArgs = { inherit agenix claude-code-nix; };
           modules = [
             hostFile
             agenix.nixosModules.default
@@ -70,7 +56,7 @@
       mkUniformHost = name:
         nixpkgs.lib.nixosSystem {
           inherit system;
-          specialArgs = { inherit agenix claude-code-nix niri-flake dms; };
+          specialArgs = { inherit agenix claude-code-nix; };
           modules = [
             ./hosts/hardware/${name}.nix
             ./modules/base.nix
@@ -99,7 +85,7 @@
 
       homeConfigurations.rvo = home-manager.lib.homeManagerConfiguration {
         inherit pkgs;
-        extraSpecialArgs = { inherit claude-code-nix niri-flake dms; };
+        extraSpecialArgs = { inherit claude-code-nix; };
         modules = [
           ./home/common.nix
           {
