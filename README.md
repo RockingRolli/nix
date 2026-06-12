@@ -23,7 +23,7 @@ modules/
   base.nix                 # nix-ld, user, ssh, podman, firewall, flakes, sudo rules
   desktop.nix              # GUI base: pipewire, polkit, networkmanager, fonts, dconf, xdg-portal
   desktop/
-    niri.nix               # programs.niri.enable + greetd autologin to niri-session
+    niri.nix               # programs.niri.enable + programs.dms-shell.enable + tuigreet login
     vm.nix                 # spice-vdagentd + qemuGuest (guest-side conveniences)
   laptop.nix               # imports desktop + mobility extras (stub)
   workstation.nix          # imports desktop + heavier-hardware extras (stub)
@@ -31,10 +31,7 @@ modules/
     code-server.nix        # OPTIONAL: services.code-server on 127.0.0.1
 home/
   common.nix               # shared user config: fish + dev tools + Claude Code
-  gui.nix                  # GUI HM base: foot + GTK/Qt theming; imports desktop/{niri,dms}
-  desktop/
-    niri.nix               # niri HM config (keybindings + outputs)
-    dms.nix                # DMS home modules + niri integration
+  gui.nix                  # GUI HM additions on top of common: foot + GTK/Qt theming
   justfile + tasks/*.just  # global justfile deployed to ~/.config/just/
 hosts/
   proj-api.nix             # base + code-server (one-off, headless)
@@ -74,8 +71,13 @@ sudo nixos-rebuild switch --flake .#proj-api
 ```
 
 The `dev-desktop` host adds a SPICE-accessed niri+DMS desktop on top of the
-same base. Connect via virt-manager's built-in viewer (libvirt) or
-Proxmox's SPICE button — greetd auto-logs rvo into niri.
+same base. Connect via virt-manager's built-in viewer (libvirt) or Proxmox's
+SPICE button — tuigreet prompts on tty1, then niri-session launches with DMS.
+
+**One-time post-install step on dev-desktop**: log in once, then run
+`dms setup niri` (interactive TUI) to populate `~/.config/niri/` with the
+DMS-aware niri config fragments. DMS owns this directory as user-mutable
+state — Home Manager does not write it.
 
 **Git gotcha:** flakes only see files that are tracked by git. After creating
 or renaming any file, run `git add <path>` before rebuilding or Nix will act
@@ -89,7 +91,7 @@ A host file is just an imports list. Add code-server to `tepavi-dev`:
 imports = [
   ./hardware/tepavi-dev.nix
   ../modules/base.nix
-  ../modules/code-server.nix
+  ../modules/services/code-server.nix
 ];
 ```
 

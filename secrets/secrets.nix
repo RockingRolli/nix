@@ -2,23 +2,31 @@
 #
 # For each VM, after first install grab its SSH host pubkey:
 #   ssh-keyscan -t ed25519 <vm-ip>
-# (the line starting `ssh-ed25519`) and paste it below.
+# (the line starting `ssh-ed25519`) and paste it below, replacing the
+# corresponding `null`. Same for `rvo-laptop` — paste your laptop's
+# personal SSH pubkey so you can `agenix -e` from there.
 #
 # This file is read ONLY by the agenix CLI when encrypting/re-encrypting
 # `.age` files. The system itself decrypts at activation using its own
 # /etc/ssh/ssh_host_ed25519_key as the age identity, so freshly-provisioned
 # VMs can decrypt their secrets on first boot with no key juggling.
+#
+# Until at least one host pubkey is filled in, this file declares no
+# `.age` mappings — agenix won't try to evaluate the placeholders.
 
 let
-  proj-api = "ssh-ed25519 AAAA__REPLACE_WITH_proj-api_HOST_KEY__";
-  tepavi-dev = "ssh-ed25519 AAAA__REPLACE_WITH_tepavi-dev_HOST_KEY__";
+  # Host pubkeys — replace each `null` with the host's `ssh-ed25519 AAAA...` line.
+  proj-api = null;
+  tepavi-dev = null;
+  dev-desktop = null;
 
-  # Personal age/SSH keys that should also be able to decrypt (so you can
-  # `agenix -e` from your laptop). Add your laptop's SSH pubkey here.
-  rvo-laptop = "ssh-ed25519 AAAA__REPLACE_WITH_LAPTOP_KEY__";
+  # Personal SSH pubkey(s) that should also be able to decrypt.
+  rvo-laptop = null;
 
-  all = [ proj-api tepavi-dev rvo-laptop ];
+  # Filter out the still-null slots so partially-populated state still works.
+  all = builtins.filter (k: k != null) [ proj-api tepavi-dev dev-desktop rvo-laptop ];
 in
 {
-  "example-token.age".publicKeys = all;
+  # Example mapping — uncomment and add real consumers once `all` is non-empty:
+  # "example-token.age".publicKeys = all;
 }
