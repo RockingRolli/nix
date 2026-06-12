@@ -1,0 +1,177 @@
+# nix
+
+Per-project NixOS dev VMs + portable home-manager (fish) config, shared from one
+flake.
+
+- One `nixosConfigurations.<vm>` per project VM. Mix-and-match by which modules
+  the host file imports.
+- `home/fish.nix` is the constant: identical fish/git/dev-tool setup across
+  every VM, plus a standalone `homeConfigurations.rvo` so the same config works
+  on Fedora.
+- `nix-ld` is enabled at the system level so `uv`, `pnpm`, and `rustup` work
+  without per-project `.nix` files. Project repos stay clean — reproducibility
+  there comes from `uv.lock` / `pnpm-lock.yaml` / `Cargo.lock`.
+
+## Layout
+
+```
+flake.nix                  # inputs (pinned) + nixosConfigurations + homeConfigurations.rvo
+modules/
+  base.nix                 # nix-ld, user, ssh, podman, firewall, flakes
+  code-server.nix          # OPTIONAL: services.code-server on 127.0.0.1
+  postgres.nix             # OPTIONAL: services.postgresql
+home/
+  fish.nix                 # shared user config (fish + dev tools)
+hosts/
+  proj-api.nix             # base + code-server + postgres
+  proj-web.nix             # base only
+  hardware/
+    proj-api.nix           # placeholder; regenerate on install
+    proj-web.nix
+secrets/
+  secrets.nix              # agenix recipients (host pubkeys)
+  *.age                    # encrypted secrets (created with agenix CLI)
+```
+
+## Day-to-day workflow
+
+```
+nixos-rebuild switch --flake github:RockingRolli/nix#proj-api
+nixos-rebuild switch --flake github:RockingRolli/nix#proj-web
+```
+
+Local iteration (cloned repo):
+
+```
+sudo nixos-rebuild switch --flake .#proj-api
+```
+
+**Git gotcha:** flakes only see files that are tracked by git. After creating
+or renaming any file, run `git add <path>` before rebuilding or Nix will act
+as if the file does not exist.
+
+## Adding/removing a feature
+
+A host file is just an imports list. Add code-server to `proj-web`:
+
+```nix
+imports = [
+  ./hardware/proj-web.nix
+  ../modules/base.nix
+  ../modules/code-server.nix
+];
+```
+
+Drop postgres from `proj-api`: delete the `../modules/postgres.nix` line.
+
+## Reaching code-server
+
+It binds to `127.0.0.1:4444` and is not exposed by the firewall. Forward over
+SSH from your laptop:
+
+```
+ssh -L 4444:localhost:4444 rvo@<vm-host>
+```
+
+Then open <http://localhost:4444>.
+
+## First-install bootstrap
+
+`nixos-rebuild --flake` assumes the target is already NixOS. The first time you
+provision a VM you need to get NixOS onto it.
+
+### Proxmox VE
+
+1. Upload the NixOS minimal ISO to the Proxmox local ISO storage.
+2. Create a VM: BIOS = SeaBIOS (so the placeholder GRUB layout works as-is),
+   disk = SCSI on `virtio-scsi`, at least 8 GiB RAM and 4 vCPU for builds.
+3. Boot the ISO, partition + format with label `nixos`:
+   ```
+   parted /dev/sda -- mklabel msdos
+   parted /dev/sda -- mkpart primary 1MiB 100%
+   mkfs.ext4 -L nixos /dev/sda1
+   mount /dev/disk/by-label/nixos /mnt
+   ```
+4. Get the flake onto /mnt and generate hardware-config:
+   ```
+   nix-shell -p git
+   git clone https://github.com/RockingRolli/nix /mnt/etc/nixos-flake
+   nixos-generate-config --root /mnt --dir /tmp/cfg
+   cp /tmp/cfg/hardware-configuration.nix \
+      /mnt/etc/nixos-flake/hosts/hardware/proj-api.nix
+   ```
+5. Install:
+   ```
+   nixos-install --flake /mnt/etc/nixos-flake#proj-api
+   reboot
+   ```
+6. Commit the regenerated `hosts/hardware/proj-api.nix` from your laptop and
+   push so future rebuilds see it.
+
+Alternatively, `nixos-anywhere` from your laptop is faster:
+
+```
+nix run github:nix-community/nixos-anywhere -- \
+  --generate-hardware-config nixos-generate-config hosts/hardware/proj-api.nix \
+  --flake .#proj-api root@<vm-ip>
+```
+
+(Boot the Proxmox VM into any Linux rescue/live env first so nixos-anywhere can
+SSH in as root and take over.)
+
+### libvirt/KVM
+
+```
+virt-install --name proj-api --memory 8192 --vcpus 4 \
+  --disk size=40,bus=virtio --network bridge=virbr0 \
+  --cdrom /var/lib/libvirt/images/nixos-minimal.iso --osinfo nixos-unknown
+```
+
+Then partition/install as in the Proxmox steps. nixos-anywhere works the same
+way once the VM has a reachable SSH.
+
+## Secrets (agenix)
+
+1. After first install, get each VM's host pubkey:
+   ```
+   ssh-keyscan -t ed25519 <vm-ip>
+   ```
+   Paste the `ssh-ed25519 ...` line into `secrets/secrets.nix`. Add your
+   laptop's SSH pubkey too so you can edit secrets from there.
+2. Encrypt a new secret:
+   ```
+   cd secrets
+   nix run github:ryantm/agenix -- -e example-token.age
+   ```
+   Commit the resulting `.age` file. The plaintext never touches the repo and
+   never enters the world-readable Nix store.
+3. Uncomment the `age.secrets.example-token` block in `hosts/proj-api.nix` to
+   wire it up. Consumers read it from `config.age.secrets.example-token.path`.
+
+`sops-nix` is the heavier alternative if you ever need multi-recipient YAML
+secrets or to share secrets with non-NixOS tooling.
+
+## Fedora (standalone home-manager)
+
+The same fish/dev-tool setup, applied to your Fedora machines:
+
+```
+nix run home-manager/release-26.05 -- switch --flake github:RockingRolli/nix#rvo
+```
+
+To make fish the login shell on Fedora:
+
+```
+which fish | sudo tee -a /etc/shells
+chsh -s "$(which fish)"
+```
+
+(NixOS handles this automatically via `users.users.rvo.shell` in
+`modules/base.nix`; on Fedora `chsh` is the standard way.)
+
+## Validation
+
+```
+nix flake check
+nix build .#nixosConfigurations.proj-api.config.system.build.toplevel --dry-run
+```
