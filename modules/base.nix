@@ -30,7 +30,12 @@
     glibc
   ];
 
-  users.mutableUsers = false;
+  # mutableUsers=true: passwords are not declared in this repo (and not
+  # smuggled out via agenix either, yet). The trade-off: this repo no longer
+  # owns user state end-to-end — passwords persist in /etc/shadow across
+  # rebuilds and won't follow a `nixos-rebuild` to a fresh disk. SSH keys,
+  # groups, shell, and home dir are still declarative below.
+  users.mutableUsers = true;
   users.users.rvo = {
     isNormalUser = true;
     description = "rvo";
