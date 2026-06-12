@@ -40,13 +40,13 @@
     # escape hatch below lets the flake evaluate for review, but you cannot
     # actually log in until a real key lands here.
     openssh.authorizedKeys.keys = [
-      # "ssh-ed25519 AAAA... rvo@laptop"
+      "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDUigaGiHUDe2sJgGQfx/GFf5pVgNJJCZClwC63LStY2gadNiyI3ehMpoNvDIT2EEJMqsRuVL7NIGYFhj3FVArhf7v0SGhSn/Xp8Rwa2s38lBsoaOf1z5CDp4DxE0VNcGN3wBkw4vfMZAgQbCgQuRoCJ7yTxduFrKgXRJmHcu2S/iXYCEltV5Vkh5HfypW+iPGPEY1Tf8CS89XbmgXOxO+WWb50eIf2Yzy/rwbD7Ur8JEjsNpp8fIPiIY1/r5ADEhh0vManLWEQRVkxmOZ3GvRU0Md5ZfFEAU6kMhrNXWpBWyo0uQQbJAetASf1jI49YTWLl6TKZCbzZbqXasOk/7uJ roland@pwrbox"
     ];
   };
   # Suppresses the "neither root nor any wheel user has a password or key"
   # assertion so `nix flake check` passes against the empty key list above.
   # Once you add a real key, this becomes a no-op (the assertion stops firing).
-  users.allowNoPasswordLogin = true;
+  users.allowNoPasswordLogin = false;
   security.sudo.wheelNeedsPassword = false;
 
   # System-level fish enable so vendor completions install correctly.
@@ -76,7 +76,7 @@
 
   time.timeZone = lib.mkDefault "UTC";
   i18n.defaultLocale = "en_US.UTF-8";
-  console.keyMap = "us";
+  console.keyMap = "de";
 
   environment.systemPackages = with pkgs; [
     git

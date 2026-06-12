@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git ls-remote *)",
+      "Bash(/usr/bin/nix --extra-experimental-features 'nix-command flakes' flake check --no-build)",
+      "Bash(git add *)"
+    ]
+  }
+}

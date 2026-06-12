@@ -37,7 +37,7 @@
     enable = true;
     settings = {
       user.name = "rvo";
-      user.email = "roland.vonohlen@gmail.com";
+      user.email = "roland@rvo-host.net";
       init.defaultBranch = "main";
       pull.rebase = true;
       push.autoSetupRemote = true;
