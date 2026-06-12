@@ -22,11 +22,23 @@
   # parallel from graphical-session.target activation.
   systemd.user.services.niri.wants = [ "dms.service" ];
 
-  # Quickshell (spawned by dms.service) is a Qt app. Without QT_QPA_PLATFORM
-  # explicitly set, Qt defaults to xcb (X11), fails to find DISPLAY, and exits
-  # with "cannot open display:". Forcing wayland selects the wayland Qt
-  # platform plugin instead.
-  systemd.user.services.dms.environment.QT_QPA_PLATFORM = "wayland";
+  # Quickshell (spawned by dms.service) is a Qt app:
+  # - QT_QPA_PLATFORM=wayland selects the wayland platform plugin (otherwise
+  #   Qt defaults to xcb and quickshell would never connect to the compositor).
+  # - QT_QPA_PLATFORMTHEME is forcibly unset to suppress the qt6gtk2 platform
+  #   theme that home/gui.nix's qt.platformTheme.name="gtk" exports into the
+  #   session — qt6gtk2 is X11-linked and crashes on XOpenDisplay in a pure
+  #   Wayland service environment.
+  systemd.user.services.dms.environment = {
+    QT_QPA_PLATFORM = "wayland";
+    # The HM qt.platformTheme.name = "gtk" in home/gui.nix exports
+    # QT_QPA_PLATFORMTHEME=gtk2 into the niri session, which makes
+    # quickshell try to load X11-linked qt6gtk2 and crash on
+    # XOpenDisplay. Override to empty so Qt uses the builtin fusion
+    # theme (Wayland-safe). lib.mkForce because hm-session-vars
+    # exports the value through a different merge channel.
+    QT_QPA_PLATFORMTHEME = lib.mkForce "";
+  };
 
   # Note: xdg.portal.config.niri.default is already set by nixpkgs's own
   # programs/wayland/niri.nix (to "gnome;gtk"). We do not override it here;
