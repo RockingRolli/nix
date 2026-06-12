@@ -17,20 +17,27 @@
   # ../desktop.nix; this adds the niri-specific preference.
   xdg.portal.config.niri.default = [ "gtk" ];
 
-  # greetd uses tuigreet with --autologin so the PAM/logind transition runs
-  # cleanly (session 1 → class=user, seat0/tty1 properly assigned). niri
-  # gets DRM master and graphical-session.target activates. To require a
-  # password later, drop the --autologin flag.
+  # greetd autologin via initial_session: greetd itself runs the PAM session
+  # opening for rvo without prompting, then execs niri-session. This is the
+  # documented greetd autologin pattern (tuigreet 0.9.1 has no --autologin
+  # flag). default_session below is tuigreet for any subsequent login (e.g.,
+  # after logout). To require a password on boot too, delete the
+  # initial_session block; greetd will fall through to default_session.
   services.greetd = {
     enable = true;
     settings = {
+      # tuigreet does PAM login on subsequent prompts (after logout or if
+      # initial_session ever fails). User sees a real password prompt here.
       default_session = {
-        # tuigreet handles the PAM login (even auto), so logind promotes the
-        # session from class=greeter to class=user with proper seat0/tty1
-        # assignment. niri then gets a real DRM master and graphical-session
-        # .target activates (which DMS's systemd unit depends on).
-        command = "${pkgs.greetd.tuigreet}/bin/tuigreet --time --remember --cmd niri-session --autologin rvo";
+        command = "${pkgs.greetd.tuigreet}/bin/tuigreet --time --remember --cmd niri-session";
         user = "greeter";
+      };
+      # First-boot autologin: greetd itself does PAM auth for rvo without
+      # prompting, then exec niri-session. This is the right place for
+      # autologin (tuigreet 0.9.1 has no --autologin flag of its own).
+      initial_session = {
+        command = "niri-session";
+        user = "rvo";
       };
     };
   };
