@@ -1,14 +1,11 @@
 { config, pkgs, lib, ... }:
 
-# GUI-only home-manager content. Imported by GUI hosts (dev-desktop and
-# future laptop/workstation) on top of ./common.nix. Headless hosts do not
-# import this.
+# GUI-only home-manager content (terminal + theming). Imported by GUI hosts
+# (dev-desktop and future laptop/workstation) on top of ./common.nix.
+# Compositor (niri) and shell (DMS) are configured at the system level in
+# ../modules/desktop/niri.nix per DMS docs; per-user niri config lives in
+# ~/.config/niri/dms/*.kdl after the one-time `dms setup niri` step.
 {
-  imports = [
-    ./desktop/niri.nix
-    ./desktop/dms.nix
-  ];
-
   # Wayland-native terminal. Minimal config; iterate as desired.
   programs.foot = {
     enable = true;
