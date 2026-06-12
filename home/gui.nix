@@ -20,16 +20,11 @@
     };
   };
 
-  # GPU-accelerated terminal. Kept alongside foot — pick whichever feels
-  # right per-session. Minimal config; iterate as desired.
-  programs.ghostty = {
-    enable = true;
-    settings = {
-      font-family = "JetBrainsMono Nerd Font";
-      font-size = 11;
-      background-opacity = 0.95;
-    };
-  };
+  # GPU-accelerated terminal. Installed as a plain package (not via the HM
+  # programs.ghostty module) so ~/.config/ghostty/config stays user-mutable
+  # — same pattern as DMS owning ~/.config/niri/*. Edit the config in
+  # place and reload, no rebuild needed.
+  home.packages = [ pkgs.ghostty ];
 
   # GTK theming. Apps following xdg-desktop-portal honour these.
   gtk = {
