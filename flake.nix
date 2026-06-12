@@ -30,7 +30,8 @@
         home-manager.useGlobalPkgs = true;
         home-manager.useUserPackages = true;
         home-manager.extraSpecialArgs = { inherit claude-code-nix; };
-        home-manager.users.rvo = import ./home/common.nix;
+        # users.<name>.imports is owned by each host file so GUI hosts can layer
+        # gui.nix on top of common.nix without affecting headless hosts.
       };
 
       # mkHost: explicit host file — the right tool for one-offs (proj-api,

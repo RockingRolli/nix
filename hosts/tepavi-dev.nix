@@ -14,5 +14,7 @@
 
   networking.hostName = "tepavi-dev";
 
+  home-manager.users.rvo = import ../home/common.nix;
+
   system.stateVersion = "26.05";
 }
