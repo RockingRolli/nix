@@ -48,6 +48,12 @@
   # Once you add a real key, this becomes a no-op (the assertion stops firing).
   users.allowNoPasswordLogin = false;
 
+  # Temporarily passwordless while iterating on the desktop. The targeted
+  # NOPASSWD rules below remain in place but become no-ops; they're kept so
+  # tightening back to "real password for general sudo + NOPASSWD for the
+  # day-to-day commands" is a one-line change (delete this attribute).
+  security.sudo.wheelNeedsPassword = false;
+
   # General sudo still requires a password (defense in depth — a hijacked
   # session can't escalate without the password). The specific commands the
   # `system::` just recipes invoke get a NOPASSWD exemption below so day-to-day
