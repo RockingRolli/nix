@@ -32,7 +32,7 @@
   #   mode = "0400";
   # };
 
-  home-manager.users.rvo = import ../home/common.nix;
+  home-manager.users.rvo.imports = [ ../home/common.nix ];
 
   system.stateVersion = "26.05";
 }

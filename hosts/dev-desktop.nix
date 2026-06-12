@@ -15,8 +15,9 @@
 
   networking.hostName = "dev-desktop";
 
-  # GUI host: layer gui.nix on top of common.nix. gui.nix imports
-  # ../home/desktop/{niri,dms}.nix internally.
+  # GUI host: layer gui.nix on top of common.nix. (Compositor config itself
+  # lives on the system side in modules/desktop/niri.nix + programs.dms-shell;
+  # gui.nix is just the user-side theming/foot setup.)
   home-manager.users.rvo.imports = [
     ../home/common.nix
     ../home/gui.nix
