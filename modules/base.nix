@@ -34,7 +34,7 @@
   users.users.rvo = {
     isNormalUser = true;
     description = "rvo";
-    extraGroups = [ "wheel" "podman" ];
+    extraGroups = [ "wheel" "podman" "input" "video" ];
     shell = pkgs.fish;
     # REPLACE this before deploying. Empty list + the allowNoPasswordLogin
     # escape hatch below lets the flake evaluate for review, but you cannot
