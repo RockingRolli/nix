@@ -37,6 +37,10 @@
   ];
   fonts.fontconfig.enable = true;
 
+  # rtkit allows PipeWire to request realtime scheduling priority.
+  # Without this, PipeWire runs at normal priority and adds avoidable latency.
+  security.rtkit.enable = true;
+
   # polkit is needed by GUI auth prompts (pkexec, mount, etc.).
   security.polkit.enable = true;
 }
