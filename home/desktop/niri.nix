@@ -1,10 +1,13 @@
-{ config, pkgs, lib, niri-flake, ... }:
+{ config, pkgs, lib, ... }:
 
 # User-side niri config. The system-side enable lives in
 # ../../modules/desktop/niri.nix.
+#
+# niri-flake.homeModules.config is already injected via
+# niri-flake.nixosModules.niri → home-manager.sharedModules, so we must NOT
+# import homeModules.niri here — doing so would declare programs.niri.finalConfig
+# twice and cause an evaluation error.
 {
-  imports = [ niri-flake.homeModules.niri ];
-
   programs.niri.settings = {
     # Starter keybindings — iterate freely. niri-flake supports both the
     # nested attrset form (used here) and a raw KDL string via

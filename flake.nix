@@ -86,6 +86,7 @@
         (nixpkgs.lib.genAttrs uniformHosts mkUniformHost) // {
           proj-api = mkHost ./hosts/proj-api.nix;
           tepavi-dev = mkHost ./hosts/tepavi-dev.nix;
+          dev-desktop = mkHost ./hosts/dev-desktop.nix;
         };
 
       homeConfigurations.rvo = home-manager.lib.homeManagerConfiguration {
