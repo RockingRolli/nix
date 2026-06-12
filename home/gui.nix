@@ -20,6 +20,17 @@
     };
   };
 
+  # GPU-accelerated terminal. Kept alongside foot — pick whichever feels
+  # right per-session. Minimal config; iterate as desired.
+  programs.ghostty = {
+    enable = true;
+    settings = {
+      font-family = "JetBrainsMono Nerd Font";
+      font-size = 11;
+      background-opacity = 0.95;
+    };
+  };
+
   # GTK theming. Apps following xdg-desktop-portal honour these.
   gtk = {
     enable = true;
