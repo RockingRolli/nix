@@ -8,7 +8,12 @@
     dms.homeModules.niri
   ];
 
-  programs.dank-material-shell.enable = true;
+  programs.dank-material-shell = {
+    enable = true;
+    # Generate ~/.config/systemd/user/dms.service with WantedBy = graphical-session.target.
+    # Without this, niri runs to a blank surface because DMS never launches.
+    systemd.enable = true;
+  };
   # Use nixpkgs quickshell (0.3.0) instead of the DMS default which builds
   # from source via builtins.fetchGit — that fetch runs at eval time and
   # breaks bootstrapping on machines where git is not yet installed.
