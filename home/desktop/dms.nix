@@ -29,4 +29,20 @@
   #   enableClipboardPaste   -> wtype
   # Disable individual ones here if the panel doesn't use them, to keep
   # the closure smaller. Defaults are fine for first boot.
+
+  # DMS's nix module writes ~/.config/niri/config.kdl with include statements
+  # for dms/*.kdl fragments, but the fragment files themselves are written by
+  # `dms setup niri` (TUI run once at install time). Without them, niri refuses
+  # to start because the includes fail.
+  #
+  # Seed empty placeholders so niri's includes resolve. DMS's deployer treats
+  # zero-byte files as "deploy needed" and will fill them with real content on
+  # first run; once content is present, the placeholder logic doesn't fire
+  # again (the test below skips files that already exist).
+  home.activation.dmsSeedNiriFragments = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    mkdir -p "$HOME/.config/niri/dms"
+    for f in alttab binds colors layout outputs wpblur cursor windowrules; do
+      [ -e "$HOME/.config/niri/dms/$f.kdl" ] || touch "$HOME/.config/niri/dms/$f.kdl"
+    done
+  '';
 }
