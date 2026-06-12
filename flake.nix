@@ -39,6 +39,10 @@
       hmModule = {
         home-manager.useGlobalPkgs = true;
         home-manager.useUserPackages = true;
+        # When HM would overwrite an existing user file, move it to <file>.backup
+        # instead of failing activation. Safe one-time price on fresh machines
+        # that already had partial dotfiles; no-op afterwards.
+        home-manager.backupFileExtension = "backup";
         home-manager.extraSpecialArgs = { inherit claude-code-nix niri-flake dms; };
         # users.<name>.imports is owned by each host file so GUI hosts can layer
         # gui.nix on top of common.nix without affecting headless hosts.
