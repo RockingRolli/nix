@@ -18,9 +18,14 @@
       url = "github:sadjow/claude-code-nix";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+
+    niri-flake = {
+      url = "github:sodiboo/niri-flake";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
-  outputs = { self, nixpkgs, home-manager, agenix, claude-code-nix, ... }:
+  outputs = { self, nixpkgs, home-manager, agenix, claude-code-nix, niri-flake, ... }:
     let
       system = "x86_64-linux";
       pkgs = nixpkgs.legacyPackages.${system};
@@ -29,7 +34,7 @@
       hmModule = {
         home-manager.useGlobalPkgs = true;
         home-manager.useUserPackages = true;
-        home-manager.extraSpecialArgs = { inherit claude-code-nix; };
+        home-manager.extraSpecialArgs = { inherit claude-code-nix niri-flake; };
         # users.<name>.imports is owned by each host file so GUI hosts can layer
         # gui.nix on top of common.nix without affecting headless hosts.
       };
@@ -40,7 +45,7 @@
       mkHost = hostFile:
         nixpkgs.lib.nixosSystem {
           inherit system;
-          specialArgs = { inherit agenix claude-code-nix; };
+          specialArgs = { inherit agenix claude-code-nix niri-flake; };
           modules = [
             hostFile
             agenix.nixosModules.default
@@ -56,7 +61,7 @@
       mkUniformHost = name:
         nixpkgs.lib.nixosSystem {
           inherit system;
-          specialArgs = { inherit agenix claude-code-nix; };
+          specialArgs = { inherit agenix claude-code-nix niri-flake; };
           modules = [
             ./hosts/hardware/${name}.nix
             ./modules/base.nix
@@ -80,7 +85,7 @@
 
       homeConfigurations.rvo = home-manager.lib.homeManagerConfiguration {
         inherit pkgs;
-        extraSpecialArgs = { inherit claude-code-nix; };
+        extraSpecialArgs = { inherit claude-code-nix niri-flake; };
         modules = [
           ./home/common.nix
           {
