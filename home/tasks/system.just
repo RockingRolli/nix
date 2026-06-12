@@ -23,6 +23,6 @@ diff:
     #!/usr/bin/env bash
     set -euo pipefail
     out=$(mktemp -d)/result
-    sudo nixos-rebuild build --flake {{flake}}#{{host}} --refresh --out-link "$out"
+    nix build --refresh --out-link "$out" {{flake}}#nixosConfigurations.{{host}}.config.system.build.toplevel
     nix store diff-closures /run/current-system "$out"
     rm -rf "$(dirname "$out")"

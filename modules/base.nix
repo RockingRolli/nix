@@ -47,7 +47,19 @@
   # assertion so `nix flake check` passes against the empty key list above.
   # Once you add a real key, this becomes a no-op (the assertion stops firing).
   users.allowNoPasswordLogin = false;
-  security.sudo.wheelNeedsPassword = false;
+
+  # General sudo still requires a password (defense in depth — a hijacked
+  # session can't escalate without the password). The specific commands the
+  # `system::` just recipes invoke get a NOPASSWD exemption below so day-to-day
+  # workflow stays friction-free.
+  security.sudo.extraRules = [{
+    users = [ "rvo" ];
+    commands = [
+      { command = "/run/current-system/sw/bin/nixos-rebuild"; options = [ "NOPASSWD" "SETENV" ]; }
+      { command = "/run/current-system/sw/bin/nix-collect-garbage"; options = [ "NOPASSWD" ]; }
+      { command = "/run/current-system/sw/bin/nix-store"; options = [ "NOPASSWD" ]; }
+    ];
+  }];
 
   # System-level fish enable so vendor completions install correctly.
   # Per-user fish config lives in home/fish.nix.
