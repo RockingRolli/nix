@@ -22,7 +22,7 @@
     pnpm
     rustup
 
-    neovim
+    vim
     ripgrep
     fd
     bat
