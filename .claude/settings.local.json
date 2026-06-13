@@ -8,7 +8,16 @@
       "Bash(git rm *)",
       "Bash(/usr/bin/nix --extra-experimental-features 'nix-command flakes' flake metadata github:AvengeMedia/DankMaterialShell)",
       "WebFetch(domain:danklinux.com)",
-      "Bash(/usr/bin/nix *)"
+      "Bash(/usr/bin/nix *)",
+      "Bash(git *)",
+      "Bash(git show *)",
+      "Bash(nix --extra-experimental-features 'nix-command' store cat /nix/store/r101crn1hj2jvmi1qdlhad1g84nlhgb7-source/distro/nix/home.nix)",
+      "Bash(ssh *)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(gh api *)",
+      "WebFetch(domain:niri-wm.github.io)",
+      "Bash(nix flake *)"
     ]
   }
 }
