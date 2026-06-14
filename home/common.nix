@@ -86,7 +86,7 @@
       d = "podman";
       dc = "podman compose";
 
-      v = "nvim";
+      v = "vim";
     };
 
     shellAliases = {
@@ -151,6 +151,8 @@
         cfgHash = builtins.substring 0 12 (builtins.hashString "sha256" tideArgs);
       in
       ''
+ 	set fish_greeting
+
         set -gx FZF_DEFAULT_OPTS "--height 40% --layout=reverse --border"
 
         # Apply tide preset only when the nix-side args have actually changed.
