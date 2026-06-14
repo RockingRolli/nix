@@ -24,6 +24,7 @@
 
     vim
     ripgrep
+    lazygit
     fd
     bat
     eza
