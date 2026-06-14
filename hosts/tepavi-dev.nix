@@ -2,10 +2,7 @@
 
 {
   imports = [
-    ./hardware/tepavi-dev.nix
     ../modules/base.nix
-    # No services. Add ../modules/services/code-server.nix here to flip this
-    # host into a frontend dev box.
   ];
 
   boot.loader.grub.enable = true;
@@ -14,7 +11,12 @@
 
   networking.hostName = "tepavi-dev";
 
-  home-manager.users.rvo.imports = [ ../home/common.nix ];
+  # GUI host: layer gui.nix on top of common.nix. (Compositor config itself
+  # lives on the system side in modules/desktop/niri.nix + programs.dms-shell;
+  # gui.nix is just the user-side theming/foot setup.)
+  home-manager.users.rvo.imports = [
+    ../home/common.nix
+  ];
 
   system.stateVersion = "26.05";
 }
