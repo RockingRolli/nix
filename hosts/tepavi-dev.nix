@@ -5,10 +5,17 @@
     ./hardware/tepavi-dev.nix
     ../modules/base.nix
   ];
+  
+  # Bootloader.
+  boot.loader.systemd-boot.enable = true;
+  boot.loader.efi.canTouchEfiVariables = true;
+  
+  # Use latest kernel.
+  boot.kernelPackages = pkgs.linuxPackages_latest;
 
-  boot.loader.grub.enable = true;
-  boot.loader.grub.device = "/dev/vda";
-  boot.loader.grub.useOSProber = true;
+#  boot.loader.grub.enable = true;
+#  boot.loader.grub.device = "/dev/vda";
+#  boot.loader.grub.useOSProber = true;
 
   networking.hostName = "tepavi-dev";
 
