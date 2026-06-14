@@ -2,6 +2,7 @@
 
 {
   imports = [
+    ./hardware/tepavi-dev.nix
     ../modules/base.nix
   ];
 
