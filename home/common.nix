@@ -21,6 +21,8 @@
     nodejs_22
     pnpm
     rustup
+    
+    go-task
 
     vim
     ripgrep
