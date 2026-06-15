@@ -102,5 +102,7 @@
     unzip
     age
     # agenix CLI is best invoked on demand: `nix run github:ryantm/agenix -- -e secret.age`
+    
+    ungoogled-chromium
   ];
 }

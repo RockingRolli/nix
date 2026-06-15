@@ -23,8 +23,6 @@
     rustup
     
     go-task
-    
-    ungoogled-chromium
 
     vim
     ripgrep
