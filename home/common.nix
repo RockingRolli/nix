@@ -40,6 +40,8 @@
   ]) ++ [
     claude-code-nix.packages.${pkgs.stdenv.hostPlatform.system}.default
   ];
+  
+  programs.zellij.enable = true;
 
   programs.git = {
     enable = true;
