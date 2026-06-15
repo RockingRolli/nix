@@ -7,6 +7,8 @@
     EDITOR = "nvim";
     PAGER = "less -R";
   };
+  
+   home.sessionPath = [ "${config.home.homeDirectory}/.local/share/pnpm/bin" ];
 
   # Global justfile + its modules, deployed to ~/.config/just/ where
   # `just --global-justfile` (a.k.a. `just -g`) looks for them.
