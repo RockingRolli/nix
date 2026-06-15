@@ -58,14 +58,9 @@ A host is assembled by composing modules. There is no monolithic config — each
 `hosts/<name>.nix` is a thin imports list plus host-specific bits (hostname,
 bootloader, which home-manager profiles to layer).
 
-**Two host builders in `flake.nix`:**
-
-- `mkHost ./hosts/<name>.nix` — one-off host with a custom imports list. Used by
-  `proj-api`, `tepavi-dev`, `dev-desktop`. This is the default for anything that
-  needs specific services.
-- `mkUniformHost <name>` — for a fleet of identical dev VMs differing only by
-  hostname + hardware. Add a name to the `uniformHosts` list (currently empty)
-  and a matching `hosts/hardware/<name>.nix`; the config appears automatically.
+**Host builder in `flake.nix`:** `mkHost ./hosts/<name>.nix` — each host file is
+a thin imports list (hardware + base + whichever modules that host needs) plus
+hostname and bootloader.
 
 **Layering model:**
 
@@ -106,10 +101,6 @@ a service, delete its import line.
 - `users.mutableUsers = true` — passwords are deliberately NOT declared in this
   repo. They live in `/etc/shadow` and don't follow a rebuild to fresh disk. SSH
   keys, groups, shell, home dir are still declarative.
-- Secrets use **agenix** (`secrets/secrets.nix` holds recipient host pubkeys;
-  `*.age` files are encrypted). The agenix CLI is invoked on demand, not installed:
-  `nix run github:ryantm/agenix -- -e secrets/<name>.age`. See README for the full
-  wiring flow.
 - The fish `just` wrapper function (in `common.nix`) walks up the directory tree
   for a local justfile and falls back to the global one — so `just system::pull`
   works from anywhere.

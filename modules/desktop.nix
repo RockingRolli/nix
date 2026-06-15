@@ -1,8 +1,8 @@
 { config, pkgs, lib, ... }:
 
 # GUI base for every host with a display. Headless hosts (proj-api,
-# tepavi-dev) do not import this; GUI hosts (dev-desktop, future laptop +
-# workstation) do, either directly or via ./laptop.nix / ./workstation.nix.
+# tepavi-dev) do not import this; GUI hosts (dev-desktop, future laptop) do,
+# either directly or via ./laptop.nix.
 {
   # Audio. DMS reads PipeWire state for per-app volume in the panel.
   services.pipewire = {
@@ -13,8 +13,8 @@
     wireplumber.enable = true;
   };
 
-  # GUI hosts manage networks via NetworkManager (laptop wifi, workstation
-  # nm-applet via DMS). In a VM this still gets DHCP from the hypervisor.
+  # GUI hosts manage networks via NetworkManager (laptop wifi, nm-applet via
+  # DMS). In a VM this still gets DHCP from the hypervisor.
   networking.networkmanager.enable = true;
 
   # GTK theming bridge — apps that store settings via dconf need this.

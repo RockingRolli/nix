@@ -18,7 +18,7 @@ flake.
 ## Layout
 
 ```
-flake.nix                  # inputs + mkHost + mkUniformHost + outputs
+flake.nix                  # inputs + mkHost + outputs
 modules/
   base.nix                 # nix-ld, user, ssh, podman, firewall, flakes, sudo rules
   desktop.nix              # GUI base: pipewire, polkit, networkmanager, fonts, dconf, xdg-portal
@@ -26,7 +26,6 @@ modules/
     niri.nix               # programs.niri.enable + programs.dms-shell.enable + tuigreet login
     vm.nix                 # spice-vdagentd + qemuGuest (guest-side conveniences)
   laptop.nix               # imports desktop + mobility extras (stub)
-  workstation.nix          # imports desktop + heavier-hardware extras (stub)
   services/
     code-server.nix        # OPTIONAL: services.code-server on 127.0.0.1
 home/
@@ -41,21 +40,13 @@ hosts/
     proj-api.nix
     tepavi-dev.nix
     dev-desktop.nix        # placeholder until install regenerates
-secrets/
-  secrets.nix              # agenix recipients (host pubkeys)
-  *.age                    # encrypted secrets (created with agenix CLI)
 ```
 
-## Two ways to define a host
+## Defining a host
 
-The flake exposes two builders:
-
-| Use | When |
-|---|---|
-| `mkHost ./hosts/<name>.nix` | One-off host with custom imports. Each `hosts/<name>.nix` is a thin imports list. Use this for proj-api, tepavi-dev, future laptop/workstation. |
-| `mkUniformHost <name>` | Dev-VM fleet where every host looks identical except hostname + hardware. Names go in the `uniformHosts` list. Currently empty — add a name + a matching `hosts/hardware/<name>.nix` and the host appears. |
-
-Both coexist in `nixosConfigurations`.
+Each `hosts/<name>.nix` is a thin imports list (hardware + base + whichever
+modules that host needs) plus its hostname and bootloader. `mkHost` in
+`flake.nix` wires it up with home-manager.
 
 ## Day-to-day workflow
 
@@ -166,27 +157,6 @@ virt-install --name proj-api --memory 8192 --vcpus 4 \
 
 Then partition/install as in the Proxmox steps. nixos-anywhere works the same
 way once the VM has a reachable SSH.
-
-## Secrets (agenix)
-
-1. After first install, get each VM's host pubkey:
-   ```
-   ssh-keyscan -t ed25519 <vm-ip>
-   ```
-   Paste the `ssh-ed25519 ...` line into `secrets/secrets.nix`. Add your
-   laptop's SSH pubkey too so you can edit secrets from there.
-2. Encrypt a new secret:
-   ```
-   cd secrets
-   nix run github:ryantm/agenix -- -e example-token.age
-   ```
-   Commit the resulting `.age` file. The plaintext never touches the repo and
-   never enters the world-readable Nix store.
-3. Uncomment the `age.secrets.example-token` block in `hosts/proj-api.nix` to
-   wire it up. Consumers read it from `config.age.secrets.example-token.path`.
-
-`sops-nix` is the heavier alternative if you ever need multi-recipient YAML
-secrets or to share secrets with non-NixOS tooling.
 
 ## Fedora (standalone home-manager)
 

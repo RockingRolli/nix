@@ -7,8 +7,8 @@
     EDITOR = "nvim";
     PAGER = "less -R";
   };
-  
-   home.sessionPath = [ "${config.home.homeDirectory}/.local/share/pnpm/bin" ];
+
+  home.sessionPath = [ "${config.home.homeDirectory}/.local/share/pnpm/bin" ];
 
   # Global justfile + its modules, deployed to ~/.config/just/ where
   # `just --global-justfile` (a.k.a. `just -g`) looks for them.
@@ -23,7 +23,7 @@
     nodejs_22
     pnpm
     rustup
-    
+
     go-task
 
     vim
@@ -44,7 +44,7 @@
   ]) ++ [
     claude-code-nix.packages.${pkgs.stdenv.hostPlatform.system}.default
   ];
-  
+
   programs.zellij.enable = true;
 
   programs.git = {
@@ -176,7 +176,7 @@
         cfgHash = builtins.substring 0 12 (builtins.hashString "sha256" tideArgs);
       in
       ''
- 	set fish_greeting
+        set fish_greeting
 
         set -gx FZF_DEFAULT_OPTS "--height 40% --layout=reverse --border"
 

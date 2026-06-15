@@ -30,11 +30,10 @@
     glibc
   ];
 
-  # mutableUsers=true: passwords are not declared in this repo (and not
-  # smuggled out via agenix either, yet). The trade-off: this repo no longer
-  # owns user state end-to-end — passwords persist in /etc/shadow across
-  # rebuilds and won't follow a `nixos-rebuild` to a fresh disk. SSH keys,
-  # groups, shell, and home dir are still declarative below.
+  # mutableUsers=true: passwords are not declared in this repo. The trade-off:
+  # this repo no longer owns user state end-to-end — passwords persist in
+  # /etc/shadow across rebuilds and won't follow a `nixos-rebuild` to a fresh
+  # disk. SSH keys, groups, shell, and home dir are still declarative below.
   users.mutableUsers = true;
   users.users.rvo = {
     isNormalUser = true;
@@ -100,9 +99,8 @@
     rsync
     file
     unzip
-    age
-    # agenix CLI is best invoked on demand: `nix run github:ryantm/agenix -- -e secret.age`
-    
+
+    # Playwright browser for project dev servers.
     ungoogled-chromium
   ];
 }
