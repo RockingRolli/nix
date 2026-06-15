@@ -39,7 +39,7 @@
   users.users.rvo = {
     isNormalUser = true;
     description = "rvo";
-    extraGroups = [ "wheel" "podman" "input" "video" ];
+    extraGroups = [ "wheel" "input" "video" ];
     shell = pkgs.fish;
     # TODO: rotate to an ed25519 key (RSA is deprecated and the host label
     # `roland@pwrbox` leaks an internal hostname). Swap to a fresh
@@ -78,11 +78,8 @@
     };
   };
 
-  virtualisation.podman = {
-    enable = true;
-    dockerCompat = true;
-    defaultNetwork.settings.dns_enabled = true;
-  };
+  # Container runtime is not chosen here — each host imports exactly one of
+  # modules/virtualisation/{podman,docker}.nix. base.nix stays runtime-agnostic.
 
   networking.useDHCP = lib.mkDefault true;
   networking.firewall = {

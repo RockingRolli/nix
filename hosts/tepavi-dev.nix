@@ -4,6 +4,7 @@
   imports = [
     ./hardware/tepavi-dev.nix
     ../modules/base.nix
+    ../modules/virtualisation/docker.nix  # docker + docker-compose (replaces podman on this host)
   ];
   
   # Bootloader.

@@ -60,6 +60,7 @@
           modules = [
             ./hosts/hardware/${name}.nix
             ./modules/base.nix
+            ./modules/virtualisation/podman.nix
             {
               networking.hostName = name;
               system.stateVersion = "26.05";

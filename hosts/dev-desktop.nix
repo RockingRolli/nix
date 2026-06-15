@@ -4,6 +4,7 @@
   imports = [
     ./hardware/dev-desktop.nix
     ../modules/base.nix
+    ../modules/virtualisation/podman.nix
     ../modules/desktop.nix
     ../modules/desktop/niri.nix
     ../modules/desktop/vm.nix

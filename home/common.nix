@@ -87,8 +87,6 @@
       lt = "eza --tree --level=2";
 
       k = "kubectl";
-      d = "podman";
-      dc = "podman compose";
 
       v = "vim";
     };
@@ -101,6 +99,27 @@
       mkcd = ''
         mkdir -p $argv[1]
         and cd $argv[1]
+      '';
+
+      # d / dc are runtime-aware so this one shared config works on both podman
+      # and docker hosts. podman is the default runtime AND ships a `docker`
+      # compat shim, so testing for `docker` would match everywhere — instead
+      # prefer podman when present (every host except the docker ones, where
+      # podman is disabled and absent) and fall back to docker.
+      d = ''
+        if command -q podman
+            podman $argv
+        else
+            docker $argv
+        end
+      '';
+
+      dc = ''
+        if command -q podman
+            podman compose $argv
+        else
+            docker compose $argv
+        end
       '';
 
       # Wraps `just` so it picks the local justfile if one exists anywhere
