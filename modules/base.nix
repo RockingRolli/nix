@@ -36,6 +36,7 @@
     harfbuzz
     fontconfig
     freetype
+    file
   ];
 
   # mutableUsers=true: passwords are not declared in this repo. The trade-off:
