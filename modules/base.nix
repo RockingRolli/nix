@@ -28,6 +28,14 @@
     libxslt
     libxcrypt
     glibc
+    # for weasyprint/pdf generation
+    pango
+    cairo
+    gdk-pixbuf
+    glib
+    harfbuzz
+    fontconfig
+    freetype
   ];
 
   # mutableUsers=true: passwords are not declared in this repo. The trade-off:
