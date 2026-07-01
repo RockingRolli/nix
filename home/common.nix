@@ -66,6 +66,36 @@
   programs.fzf.enable = true;
   programs.zoxide.enable = true;
 
+  # Agent forwarding to the trusted dev VMs. The origin agent (holding the
+  # keys) is provided by the laptop's desktop; this only opts the client in.
+  # Scoped to named hosts, never `*` — a forwarded agent lets whoever controls
+  # the target host use your keys for the life of the connection. This config
+  # also runs *inside* the VMs, so scoping prevents blind onward forwarding.
+  # Rename hosts to match your ~/.ssh/config aliases if they differ.
+  #
+  # `settings` attr names are `Host` patterns. enableDefaultConfig is turned off
+  # and its old defaults pinned under "*" explicitly (per the home-manager
+  # module docs) so no deprecation warnings fire on rebuild.
+  programs.ssh = {
+    enable = true;
+    enableDefaultConfig = false;
+    settings = {
+      "*" = {
+        ForwardAgent = false;
+        AddKeysToAgent = "no";
+        Compression = false;
+        ServerAliveInterval = 0;
+        ServerAliveCountMax = 3;
+        HashKnownHosts = false;
+        UserKnownHostsFile = "~/.ssh/known_hosts";
+        ControlMaster = "no";
+        ControlPath = "~/.ssh/master-%r@%n:%p";
+        ControlPersist = "no";
+      };
+      "proj-api tepavi-dev dev-desktop".ForwardAgent = true;
+    };
+  };
+
   programs.fish = {
     enable = true;
 

@@ -83,6 +83,9 @@
       PasswordAuthentication = false;
       PermitRootLogin = "no";
       KbdInteractiveAuthentication = false;
+      # Permit agent forwarding so a VM can use keys forwarded from the laptop
+      # (equals the OpenSSH default; set explicitly to document intent).
+      AllowAgentForwarding = true;
     };
   };
 
