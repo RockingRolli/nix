@@ -1,7 +1,15 @@
-{ config, pkgs, lib, ... }:
+{
+  config,
+  pkgs,
+  lib,
+  ...
+}:
 
 {
-  nix.settings.experimental-features = [ "nix-command" "flakes" ];
+  nix.settings.experimental-features = [
+    "nix-command"
+    "flakes"
+  ];
   nix.settings.auto-optimise-store = true;
   nix.gc = {
     automatic = true;
@@ -37,6 +45,34 @@
     fontconfig
     freetype
     file
+    # for playwright/chromium (bundled headless-shell)
+    nspr # libnspr4
+    nss # libnss3, libnssutil3
+    atk # libatk-1.0
+    at-spi2-atk # libatk-bridge-2.0
+    at-spi2-core # libatspi
+    dbus # libdbus-1
+    expat # libexpat
+    libxkbcommon # libxkbcommon
+    alsa-lib # libasound
+    systemd # libudev
+    libgbm # libgbm  (older nixpkgs: use `mesa` instead)
+    xorg.libX11 # libX11
+    xorg.libXcomposite
+    xorg.libXdamage
+    xorg.libXext
+    xorg.libXfixes
+    xorg.libXrandr
+    xorg.libxcb
+    # commonly dlopen'd at runtime (not in ldd, but Chromium needs them)
+    cups # libcups
+    libdrm # libdrm
+    xorg.libxshmfence
+    xorg.libXrender
+    xorg.libXtst
+    xorg.libXi
+    xorg.libXcursor
+    xorg.libXScrnSaver
   ];
 
   # mutableUsers=true: passwords are not declared in this repo. The trade-off:
@@ -47,7 +83,11 @@
   users.users.rvo = {
     isNormalUser = true;
     description = "rvo";
-    extraGroups = [ "wheel" "input" "video" ];
+    extraGroups = [
+      "wheel"
+      "input"
+      "video"
+    ];
     shell = pkgs.fish;
     # TODO: rotate to an ed25519 key (RSA is deprecated and the host label
     # `roland@pwrbox` leaks an internal hostname). Swap to a fresh
@@ -61,17 +101,40 @@
   # can't escalate without it). The specific commands the `system::` just
   # recipes invoke get a NOPASSWD exemption below so day-to-day workflow
   # stays friction-free.
-  security.sudo.extraRules = [{
-    users = [ "rvo" ];
-    commands = [
-      { command = "/run/current-system/sw/bin/nixos-rebuild"; options = [ "NOPASSWD" "SETENV" ]; }
-      { command = "/run/current-system/sw/bin/nix-collect-garbage"; options = [ "NOPASSWD" ]; }
-      { command = "/run/current-system/sw/bin/nix-store"; options = [ "NOPASSWD" ]; }
-      { command = "/run/current-system/sw/bin/reboot"; options = [ "NOPASSWD" ]; }
-      { command = "/run/current-system/sw/bin/shutdown"; options = [ "NOPASSWD" ]; }
-      { command = "/run/current-system/sw/bin/poweroff"; options = [ "NOPASSWD" ]; }
-    ];
-  }];
+  security.sudo.extraRules = [
+    {
+      users = [ "rvo" ];
+      commands = [
+        {
+          command = "/run/current-system/sw/bin/nixos-rebuild";
+          options = [
+            "NOPASSWD"
+            "SETENV"
+          ];
+        }
+        {
+          command = "/run/current-system/sw/bin/nix-collect-garbage";
+          options = [ "NOPASSWD" ];
+        }
+        {
+          command = "/run/current-system/sw/bin/nix-store";
+          options = [ "NOPASSWD" ];
+        }
+        {
+          command = "/run/current-system/sw/bin/reboot";
+          options = [ "NOPASSWD" ];
+        }
+        {
+          command = "/run/current-system/sw/bin/shutdown";
+          options = [ "NOPASSWD" ];
+        }
+        {
+          command = "/run/current-system/sw/bin/poweroff";
+          options = [ "NOPASSWD" ];
+        }
+      ];
+    }
+  ];
 
   # System-level fish enable so vendor completions install correctly.
   # Per-user fish config lives in home/fish.nix.
