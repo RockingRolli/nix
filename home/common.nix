@@ -65,6 +65,7 @@
 
   programs.fzf.enable = true;
   programs.zoxide.enable = true;
+  programs.mise.enable = true;
 
   # Agent forwarding to the trusted dev VMs. The origin agent (holding the
   # keys) is provided by the laptop's desktop; this only opts the client in.
