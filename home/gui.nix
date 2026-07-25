@@ -37,7 +37,16 @@
       package = pkgs.adw-gtk3;
       name = "adw-gtk3";
     };
+    # Dark mode. adw-gtk3 renders its dark variant when apps get this hint;
+    # GTK3 apps (Thunar) read it from settings.ini at startup, GTK4/libadwaita
+    # honour it too. Paired with the dconf color-scheme below so apps that ask
+    # xdg-desktop-portal-gtk for the preference (rather than reading the .ini)
+    # also come up dark.
+    gtk3.extraConfig.gtk-application-prefer-dark-theme = 1;
+    gtk4.extraConfig.gtk-application-prefer-dark-theme = 1;
   };
+
+  dconf.settings."org/gnome/desktop/interface".color-scheme = "prefer-dark";
 
   # Qt apps follow the GTK theme so foot, niri prompts, etc., look
   # consistent.
