@@ -18,7 +18,7 @@ upgrade host=`hostname`:
         git commit -m "flake: update inputs" flake.lock
         git push
     fi
-    just system::pull {{host}}
+    sudo nixos-rebuild switch --flake {{flake}}#{{host}} --refresh
 
 # Apply config in memory only (rescue with reboot if broken)
 test host=`hostname`:
