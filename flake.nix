@@ -45,6 +45,7 @@
         proj-api = mkHost ./hosts/proj-api.nix;
         tepavi-dev = mkHost ./hosts/tepavi-dev.nix;
         dev-desktop = mkHost ./hosts/dev-desktop.nix;
+        laptop = mkHost ./hosts/laptop.nix;
       };
 
       homeConfigurations.rvo = home-manager.lib.homeManagerConfiguration {
