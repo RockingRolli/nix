@@ -19,7 +19,8 @@
       "WebFetch(domain:niri-wm.github.io)",
       "Bash(nix flake *)",
       "Bash(nix --extra-experimental-features 'nix-command flakes' flake lock)",
-      "Bash(nix --extra-experimental-features 'nix-command flakes' flake check --no-build)"
+      "Bash(nix --extra-experimental-features 'nix-command flakes' flake check --no-build)",
+      "Bash(nix --version)"
     ]
   }
 }
