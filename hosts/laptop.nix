@@ -8,6 +8,7 @@
     ../modules/virtualisation/podman.nix
     ../modules/laptop.nix          # desktop.nix + power/firmware/mobility bits
     ../modules/desktop/niri.nix
+    # ../modules/gaming.nix          # steam + proton-ge + gamescope/gamemode
     # note: NOT ../modules/desktop/vm.nix — this is bare metal, not a guest.
   ];
 

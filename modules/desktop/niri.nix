@@ -8,6 +8,13 @@
 {
   programs.niri.enable = true;
 
+  environment.systemPackages = [ pkgs.xwayland-satellite ];
+  
+  environment.systemPackages = with pkgs; [
+    xwayland-satellite
+    brave
+  ];
+
   programs.dms-shell = {
     enable = true;
     systemd = {
