@@ -25,6 +25,36 @@
   # Battery percentage / charge state for the DMS panel indicator.
   services.upower.enable = true;
 
+  # Cap charging at 80%. A lithium cell held at full charge ages markedly
+  # faster than one parked around 80, and a dev laptop spends most of its life
+  # on AC — so the runtime traded away is mostly runtime that never gets used.
+  # start=75 gives a 5-point hysteresis band; without it the EC trickle-charges
+  # continuously at the threshold, which is its own kind of wear.
+  #
+  # There is no upstream NixOS module for this that doesn't pull in TLP (which
+  # conflicts with power-profiles-daemon above), so poke sysfs directly.
+  # Before a long trip, lift it for one charge without a rebuild:
+  #   echo 100 | sudo tee /sys/class/power_supply/BAT0/charge_control_end_threshold
+  systemd.services.battery-charge-threshold = {
+    description = "Cap battery charge at 80% to limit calendar ageing";
+    # Also runs on resume: After+WantedBy on suspend.target is the documented
+    # post-resume idiom, and some ThinkPad ECs drop the threshold across sleep.
+    # No RemainAfterExit — the unit must be able to go inactive to re-fire.
+    wantedBy = [ "multi-user.target" "suspend.target" ];
+    after = [ "suspend.target" ];
+    serviceConfig.Type = "oneshot";
+    script = ''
+      bat=/sys/class/power_supply/BAT0
+      # Order matters: the EC rejects a start value above the current end.
+      if [ -w "$bat/charge_control_start_threshold" ]; then
+        echo 75 > "$bat/charge_control_start_threshold"
+      fi
+      if [ -w "$bat/charge_control_end_threshold" ]; then
+        echo 80 > "$bat/charge_control_end_threshold"
+      fi
+    '';
+  };
+
   # LVFS firmware updates — ThinkPads are well supported here
   # (`fwupdmgr refresh && fwupdmgr update`).
   services.fwupd.enable = true;

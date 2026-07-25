@@ -57,12 +57,11 @@
   # Cooperates with power-profiles-daemon (enabled in modules/laptop.nix).
   programs.gamemode.enable = true;
 
-  # hardware/laptop.nix declares `swapDevices = [ ]` — this host has no swap at
-  # all. Proton's shader pre-caching forks one compile job per core and each can
-  # hold a GB+, and the iGPU carves its framebuffer out of the same system RAM;
-  # that combination is the realistic OOM path here. zram is compressed swap in
-  # RAM, so it needs no change to the LUKS/partition layout.
-  zramSwap.enable = true;
+  # Note on memory: Proton's shader pre-caching forks one compile job per core,
+  # each able to hold a GB+, and the iGPU carves its framebuffer out of the same
+  # system RAM — the realistic OOM path on this host. The zram that covers it
+  # lives in ../modules/performance.nix (it is not gaming-specific), so a host
+  # importing this module should import that one too.
 
   environment.systemPackages = with pkgs; [
     mangohud # FPS/frametime/temp overlay: `mangohud %command%`
