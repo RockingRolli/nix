@@ -27,6 +27,16 @@
   # parallel from graphical-session.target activation.
   systemd.user.services.niri.wants = [ "dms.service" ];
 
+  # Keyboard layout for the compositor. niri (via libxkbcommon) reads the
+  # layout from XKB_DEFAULT_LAYOUT, NOT from services.xserver.xkb — and greetd
+  # doesn't put the console keymap into the session env. Export it here from
+  # the single source of truth in base.nix so the GUI keyboard matches the
+  # console. niri.service inherits this (niri-session imports the user-manager
+  # env at startup). DMS still owns ~/.config/niri, so a layout set there would
+  # override this; leaving niri's xkb block empty falls back to this default.
+  systemd.user.services.niri.environment.XKB_DEFAULT_LAYOUT =
+    config.services.xserver.xkb.layout;
+
   # Quickshell (spawned by dms.service) is a Qt app:
   # - QT_QPA_PLATFORM=wayland selects the wayland platform plugin (otherwise
   #   Qt defaults to xcb and quickshell would never connect to the compositor).

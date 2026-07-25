@@ -163,7 +163,15 @@
 
   time.timeZone = lib.mkDefault "UTC";
   i18n.defaultLocale = "en_US.UTF-8";
+  # German keyboard. Two independent worlds need setting:
+  #   - console.keyMap        → the TTY / virtual console.
+  #   - services.xserver.xkb  → the canonical XKB layout (needs no X server).
+  # NOTE: the niri module does NOT read services.xserver.xkb — a Wayland
+  # session only picks up the layout via libxkbcommon's XKB_DEFAULT_LAYOUT
+  # env var, which modules/desktop/niri.nix exports from this value. Without
+  # that a GUI session falls back to "us" even though the console is "de".
   console.keyMap = "de";
+  services.xserver.xkb.layout = "de";
 
   environment.systemPackages = with pkgs; [
     git
