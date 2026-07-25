@@ -4,7 +4,7 @@
   imports = [
     ./hardware/dev-desktop.nix
     ../modules/base.nix
-    ../modules/virtualisation/podman.nix
+    ../modules/virtualisation/docker.nix   # docker + compose v2 (not podman)
     ../modules/desktop.nix
     ../modules/desktop/niri.nix
     ../modules/desktop/vm.nix

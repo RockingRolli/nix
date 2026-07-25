@@ -70,8 +70,9 @@ hostname and bootloader.
 - `modules/virtualisation/{podman,docker}.nix` — the container runtime. Every
   host imports **exactly one** (they're mutually exclusive — both own the
   `docker` CLI and daemon socket, so importing both is a build-time conflict).
-  `podman.nix` (with `dockerCompat`) is the default; `docker.nix` (Docker +
-  docker-compose) is used by `tepavi-dev`. The `d`/`dc` fish functions in
+  `docker.nix` (Docker + compose v2) is used by `laptop`, `dev-desktop`, and
+  `tepavi-dev`; `podman.nix` (with `dockerCompat`) remains on `proj-api`. The
+  `d`/`dc` fish functions in
   `home/common.nix` detect the runtime at shell startup, so the one shared home
   config works on both.
 - `modules/desktop.nix` → `modules/desktop/niri.nix` + `desktop/vm.nix` — GUI

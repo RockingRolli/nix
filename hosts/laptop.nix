@@ -5,7 +5,7 @@
   imports = [
     ./hardware/laptop.nix
     ../modules/base.nix
-    ../modules/virtualisation/podman.nix
+    ../modules/virtualisation/docker.nix   # docker + compose v2 (not podman)
     ../modules/laptop.nix          # desktop.nix + power/firmware/mobility bits
     ../modules/performance.nix     # zram + build scheduling
     ../modules/desktop/niri.nix
