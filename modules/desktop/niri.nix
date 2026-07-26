@@ -59,17 +59,24 @@
   # programs/wayland/niri.nix (to "gnome;gtk"). We do not override it here;
   # the base portal module in ../desktop.nix enables xdg-desktop-portal.
 
-  # tuigreet on boot AND after logout — no autologin. `--remember` keeps the
-  # last-used username pre-filled. To re-enable autologin (testbed convenience),
-  # add an `initial_session` block alongside default_session — greetd runs it
-  # once at boot, then falls back to default_session afterwards.
-  services.greetd = {
+  # DankGreeter — owns services.greetd itself, so no greetd block here.
+  services.displayManager.dms-greeter = {
     enable = true;
-    settings = {
-      default_session = {
-        command = "${pkgs.tuigreet}/bin/tuigreet --time --remember --cmd niri-session";
-        user = "greeter";
-      };
-    };
+    compositor.name = "niri";
+
+    # The greeter's niri runs as dms-greeter and never sees the
+    # XKB_DEFAULT_LAYOUT exported above, so set the layout in its own config.
+    compositor.customConfig = ''
+      input {
+          keyboard {
+              xkb {
+                  layout "${config.services.xserver.xkb.layout}"
+              }
+          }
+      }
+    '';
+
+    # Reuse rvo's DMS theme/wallpaper on the login screen.
+    configHome = "/home/rvo";
   };
 }
