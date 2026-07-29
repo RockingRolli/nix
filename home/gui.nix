@@ -37,7 +37,7 @@
   # Qt apps follow the GTK theme so niri prompts, etc., look consistent.
   qt = {
     enable = true;
-    platformTheme.name = "gtk";
+    platformTheme.name = "gtk3";
     style.name = "adwaita-dark";
   };
 

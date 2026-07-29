@@ -57,22 +57,22 @@
     alsa-lib # libasound
     systemd # libudev
     libgbm # libgbm  (older nixpkgs: use `mesa` instead)
-    xorg.libX11 # libX11
-    xorg.libXcomposite
-    xorg.libXdamage
-    xorg.libXext
-    xorg.libXfixes
-    xorg.libXrandr
-    xorg.libxcb
+    libx11 # libX11
+    libxcomposite
+    libxdamage
+    libxext
+    libxfixes
+    libxrandr
+    libxcb
     # commonly dlopen'd at runtime (not in ldd, but Chromium needs them)
     cups # libcups
     libdrm # libdrm
-    xorg.libxshmfence
-    xorg.libXrender
-    xorg.libXtst
-    xorg.libXi
-    xorg.libXcursor
-    xorg.libXScrnSaver
+    libxshmfence
+    libxrender
+    libxtst
+    libxi
+    libxcursor
+    libxscrnsaver
   ];
 
   # mutableUsers=true: passwords are not declared in this repo. The trade-off:
