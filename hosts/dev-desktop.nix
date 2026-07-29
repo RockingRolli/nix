@@ -18,7 +18,7 @@
 
   # GUI host: layer gui.nix on top of common.nix. (Compositor config itself
   # lives on the system side in modules/desktop/niri.nix + programs.dms-shell;
-  # gui.nix is just the user-side theming/foot setup.)
+  # gui.nix is just the user-side terminal/theming setup.)
   home-manager.users.rvo.imports = [
     ../home/common.nix
     ../home/gui.nix

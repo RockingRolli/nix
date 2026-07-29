@@ -48,7 +48,7 @@
   };
 
   # Fonts. material-symbols + inter for DMS; jetbrains-mono nerd font for
-  # tide glyphs in foot/terminal.
+  # tide glyphs in the terminal.
   fonts.packages = with pkgs; [
     inter
     material-symbols

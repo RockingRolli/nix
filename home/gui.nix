@@ -6,20 +6,6 @@
 # ../modules/desktop/niri.nix per DMS docs; per-user niri config lives in
 # ~/.config/niri/dms/*.kdl after the one-time `dms setup niri` step.
 {
-  # Wayland-native terminal. Minimal config; iterate as desired.
-  programs.foot = {
-    enable = true;
-    settings = {
-      main = {
-        font = "JetBrainsMono Nerd Font:size=11";
-        pad = "8x8";
-        dpi-aware = "yes";
-      };
-      cursor.style = "beam";
-      colors.alpha = 0.95;
-    };
-  };
-
   # GPU-accelerated terminal. Installed as a plain package (not via the HM
   # programs.ghostty module) so ~/.config/ghostty/config stays user-mutable
   # — same pattern as DMS owning ~/.config/niri/*. Edit the config in
@@ -48,8 +34,7 @@
 
   dconf.settings."org/gnome/desktop/interface".color-scheme = "prefer-dark";
 
-  # Qt apps follow the GTK theme so foot, niri prompts, etc., look
-  # consistent.
+  # Qt apps follow the GTK theme so niri prompts, etc., look consistent.
   qt = {
     enable = true;
     platformTheme.name = "gtk";
