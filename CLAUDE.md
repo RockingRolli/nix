@@ -25,18 +25,33 @@ nix flake check
 nix build .#nixosConfigurations.<host>.config.system.build.toplevel --dry-run
 ```
 
-Apply changes (the global justfile in `home/justfile` + `home/tasks/system.just`
-is deployed to `~/.config/just/`, so these run from any directory as `just system::<recipe>`):
+Apply changes. `nh` is enabled in `modules/base.nix` with `NH_FLAKE` set to the
+github ref; the `sys-*` entries are fish abbreviations in `home/common.nix`
+`shellAbbrs` that expand to the real `nh` command:
 
 ```
-just system::pull           # nixos-rebuild switch from github, host = `hostname`
-just system::test           # nixos-rebuild test (in-memory, reverts on reboot)
-just system::rollback       # revert to previous generation
-just system::diff           # nix store diff-closures vs current system
-just system::gc             # garbage-collect + optimise store
+sys-pull       # → nh os switch --refresh   (build + activate + make boot default)
+sys-test       # → nh os test --refresh     (in-memory, reverts on reboot)
+sys-rollback   # → nh os rollback
+sys-gc         # → nh clean all --keep-since 7d --optimise
+sys-local      # → nh os switch ~/dev/nix        (dev machines only)
+sys-update     # → nix flake update --flake ~/dev/nix   (dev machines only)
 ```
 
-Local iteration in a cloned repo (instead of the github flake the justfile uses):
+`sys-local` builds the working tree rather than github, for in-progress work.
+The host is taken from `hostname`, so it needs no per-machine variant; pass
+`-H <host>` to override. Flakes only see tracked files — `git add` before it.
+
+`nh os switch` prints the closure diff itself, so there is no diff verb.
+`nh os info` lists generations. Switching prompts for a sudo password — see the
+comment above `security.sudo.extraRules` in `modules/base.nix`.
+
+`sys-update` needs a clone. Github is the source of truth, so inputs get bumped
+and pushed from a dev machine. Do not pass `--update` to `nh os switch` on a
+pull-only host: against a github ref it evaluates fresh inputs but cannot
+persist the lock, silently desyncing that machine.
+
+Local iteration in a cloned repo (instead of the github flake nh uses):
 
 ```
 sudo nixos-rebuild switch --flake .#<host>
@@ -65,7 +80,7 @@ hostname and bootloader.
 **Layering model:**
 
 - `modules/base.nix` — the floor every host stands on: nix-ld, the `rvo` user,
-  sshd, firewall, flakes, sudo NOPASSWD rules for the `system::` recipes. It is
+  sshd, firewall, flakes, `programs.nh` (with `NH_FLAKE`), sudo rules. It is
   container-runtime-agnostic.
 - `modules/virtualisation/{podman,docker}.nix` — the container runtime. Every
   host imports **exactly one** (they're mutually exclusive — both own the
@@ -102,9 +117,11 @@ a service, delete its import line.
 - `users.mutableUsers = true` — passwords are deliberately NOT declared in this
   repo. They live in `/etc/shadow` and don't follow a rebuild to fresh disk. SSH
   keys, groups, shell, home dir are still declarative.
-- The fish `just` wrapper function (in `common.nix`) walks up the directory tree
-  for a local justfile and falls back to the global one — so `just system::pull`
-  works from anywhere.
+- System management is `sys-*` fish **abbreviations** (`common.nix`
+  `shellAbbrs`), not functions — so the real `nh` command lands on the prompt,
+  editable and covered by nh's own completions. Cost: abbreviations are
+  interactive-only, so `ssh <host> sys-pull` does not work. If that is ever
+  needed, use `programs.fish.functions` with `--wraps "nh os switch"`.
 - tide prompt is configured via a content-hash sentinel in `common.nix`
   `interactiveShellInit`: editing `tideArgs` invalidates the hash and triggers
   exactly one re-configure on next shell. Don't hand-run `tide configure`.

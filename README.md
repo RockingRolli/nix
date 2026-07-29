@@ -31,7 +31,6 @@ modules/
 home/
   common.nix               # shared user config: fish + dev tools + Claude Code
   gui.nix                  # GUI HM additions on top of common: ghostty + GTK/Qt theming
-  justfile + tasks/*.just  # global justfile deployed to ~/.config/just/
 hosts/
   proj-api.nix             # base + code-server (one-off, headless)
   tepavi-dev.nix           # base only (one-off, headless)

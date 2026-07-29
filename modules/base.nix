@@ -17,6 +17,15 @@
     options = "--delete-older-than 30d";
   };
 
+  # `flake` sets NH_FLAKE, so `nh os switch` takes no arguments — the hostname
+  # is auto-detected. Keep it a github ref: pull-only hosts must never build
+  # from a local checkout. clean.enable stays off; nix.gc above already runs a
+  # weekly timer and enabling both warns.
+  programs.nh = {
+    enable = true;
+    flake = "github:RockingRolli/nix";
+  };
+
   # nix-ld: lets foreign dynamically-linked binaries (uv-installed Python
   # interpreters, pnpm/npm postinstall blobs, rustup toolchains, vendored
   # debuggers/LSPs) run on NixOS without per-project shell.nix or flakes.
@@ -98,9 +107,12 @@
   };
 
   # General sudo requires a password (defense in depth — a hijacked session
-  # can't escalate without it). The specific commands the `system::` just
-  # recipes invoke get a NOPASSWD exemption below so day-to-day workflow
-  # stays friction-free.
+  # can't escalate without it), with NOPASSWD exemptions for specific commands.
+  #
+  # `nh os switch` still prompts: it elevates on
+  # `<store-path>/bin/switch-to-configuration`, which changes every build, and
+  # NOPASSWD on /nix/store/* would be a trivial root escalation. The
+  # nixos-rebuild rule below is the rescue path for when nh is what broke.
   security.sudo.extraRules = [
     {
       users = [ "rvo" ];
@@ -111,14 +123,6 @@
             "NOPASSWD"
             "SETENV"
           ];
-        }
-        {
-          command = "/run/current-system/sw/bin/nix-collect-garbage";
-          options = [ "NOPASSWD" ];
-        }
-        {
-          command = "/run/current-system/sw/bin/nix-store";
-          options = [ "NOPASSWD" ];
         }
         {
           command = "/run/current-system/sw/bin/reboot";

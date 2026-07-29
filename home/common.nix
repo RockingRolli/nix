@@ -10,11 +10,6 @@
 
   home.sessionPath = [ "${config.home.homeDirectory}/.local/share/pnpm/bin" ];
 
-  # Global justfile + its modules, deployed to ~/.config/just/ where
-  # `just --global-justfile` (a.k.a. `just -g`) looks for them.
-  xdg.configFile."just/justfile".source = ./justfile;
-  xdg.configFile."just/tasks/system.just".source = ./tasks/system.just;
-
   # User-scope dev tooling. Lives here so it travels with the user, not the host.
   # uv-installed Python interpreters and rustup toolchains rely on nix-ld at the
   # system level (see modules/base.nix).
@@ -34,7 +29,6 @@
     eza
     jq
     yq-go
-    just
     gh
     delta
     fzf
@@ -121,6 +115,20 @@
       k = "kubectl";
 
       v = "vim";
+
+      # System management. Abbreviations, so the real nh command expands onto
+      # the prompt and stays editable, with nh's completions taking over.
+      sys-pull = "nh os switch --refresh";
+      sys-test = "nh os test --refresh";
+      sys-rollback = "nh os rollback";
+      sys-gc = "nh clean all --keep-since 7d --optimise";
+
+      # Dev machines only; need a clone. sys-local builds the working tree
+      # instead of github, for in-progress work — the host is picked from
+      # `hostname`, so this is the same abbreviation everywhere. Flakes only see
+      # tracked files, so `git add` new ones first.
+      sys-local = "nh os switch ${config.home.homeDirectory}/dev/nix";
+      sys-update = "nix flake update --flake ${config.home.homeDirectory}/dev/nix";
     };
 
     shellAliases = {
@@ -154,31 +162,6 @@
         end
       '';
 
-      # Wraps `just` so it picks the local justfile if one exists anywhere
-      # in the directory ancestry (matching just's own search behaviour),
-      # otherwise falls back to the global one at ~/.config/just/justfile.
-      # Lets `just system::pull` work from any directory.
-      just = ''
-        # Pass through unchanged if you already picked a justfile yourself.
-        # `-g*` / `-f*` catch combined short flags like `-gl`, `-fpath`.
-        for arg in $argv
-            switch $arg
-                case '-g*' '-f*' --global-justfile --justfile
-                    command just $argv
-                    return $status
-            end
-        end
-
-        set -l dir $PWD
-        while test "$dir" != /
-            if test -f "$dir/justfile"; or test -f "$dir/Justfile"; or test -f "$dir/.justfile"
-                command just $argv
-                return $status
-            end
-            set dir (dirname "$dir")
-        end
-        command just --global-justfile $argv
-      '';
     };
 
     interactiveShellInit =
