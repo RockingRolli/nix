@@ -184,6 +184,8 @@
     unzip
     dysk
     btop
+    ncdu
+    atuin
 
     # Playwright browser for project dev servers.
     ungoogled-chromium
