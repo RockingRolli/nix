@@ -8,6 +8,27 @@
 {
   programs.niri.enable = true;
 
+  # niri 26.04 vendors libdisplay-info-sys 0.3.0, whose build.rs requires
+  # `libdisplay-info < 0.4.0`; nixpkgs ships 0.4.0, so the build panics at
+  # pkg-config. Scoped to niri via override, leaving 0.4.0 in place for
+  # everything else. Drop this once nixpkgs carries a niri that accepts 0.4.0.
+  nixpkgs.overlays = [
+    (final: prev: {
+      niri = prev.niri.override {
+        libdisplay-info = prev.libdisplay-info.overrideAttrs (old: {
+          version = "0.3.0";
+          src = prev.fetchFromGitLab {
+            domain = "gitlab.freedesktop.org";
+            owner = "emersion";
+            repo = "libdisplay-info";
+            rev = "0.3.0";
+            sha256 = "sha256-nXf2KGovNKvcchlHlzKBkAOeySMJXgxMpbi5z9gLrdc=";
+          };
+        });
+      };
+    })
+  ];
+
   environment.systemPackages = with pkgs; [
     xwayland-satellite
     brave
