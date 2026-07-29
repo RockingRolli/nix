@@ -182,6 +182,8 @@
     rsync
     file
     unzip
+    dysk
+    btop
 
     # Playwright browser for project dev servers.
     ungoogled-chromium

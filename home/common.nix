@@ -40,7 +40,6 @@
     fzf
     zoxide
     direnv
-    btop
   ]) ++ [
     claude-code-nix.packages.${pkgs.stdenv.hostPlatform.system}.default
   ];
