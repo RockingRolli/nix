@@ -15,7 +15,13 @@
 
   environment.systemPackages = with pkgs; [
     xwayland-satellite
-    brave
+
+    # VA-API encode wedges WebRTC on this VCN (remote sees a frozen frame after a
+    # minute); repeat the wrapper's own disables since Chromium keeps only the last.
+    (brave.override {
+      commandLineArgs =
+        "--disable-features=AcceleratedVideoEncoder,OutdatedBuildDetector,UseChromeOSDirectVideoDecoder";
+    })
   ];
 
   programs.dms-shell = {
