@@ -1,8 +1,8 @@
-{ config, pkgs, lib, nix-openclaw, ... }:
+{ config, pkgs, lib, nix-openclaw, claude-code-nix, ... }:
 
 # OpenClaw agent, layered on top of home/common.nix for the `openclaw` host
 # only. Everything here is user-scoped state under ~/.openclaw; the system-side
-# prerequisites (overlay, linger, secrets dir, binary cache) are in
+# prerequisites (overlay, linger, secrets dir, firewall, binary cache) are in
 # modules/services/openclaw.nix.
 #
 # Upstream packaging notes that shaped this file:
@@ -19,13 +19,57 @@ let
   # modules/services/openclaw.nix; the contents are written once, by hand, and
   # then survive rebuilds — same reasoning as user passwords in base.nix.
   #
-  #   install -m600 /dev/stdin /var/lib/openclaw-secrets/telegram-bot-token  <<< '<token from @BotFather>'
-  #   install -m600 /dev/stdin /var/lib/openclaw-secrets/anthropic-api-key   <<< '<sk-ant-...>'
+  #   install -m600 /dev/stdin /var/lib/openclaw-secrets/telegram-bot-token <<< '<token from @BotFather>'
   #   openssl rand -hex 32 | install -m600 /dev/stdin /var/lib/openclaw-secrets/gateway-token
+  #
+  # No anthropic-api-key: Claude runs through the subscription-backed CLI, see
+  # agents.defaults.models below.
   secrets = "/var/lib/openclaw-secrets";
 
   # Local ollama box on the LAN. Plain http, so keep this to a trusted network.
   ollamaBaseUrl = "http://10.0.0.234:11434";
+
+  claudeCode = claude-code-nix.packages.${pkgs.stdenv.hostPlatform.system}.default;
+
+  # whisper.cpp ggml model. `small` is the sweet spot for German voice notes on
+  # CPU — `base` mishears too much, `medium` is ~5x slower for little gain.
+  whisperModel = "small";
+
+  # Transcription for inbound voice messages. OpenClaw calls an external
+  # command and takes its stdout as the transcript, so this wrapper has to
+  # print the text and nothing else.
+  #
+  # The ggml weights are ~500MB and are not in nixpkgs, so they are fetched
+  # once into the user cache on first use — runtime state, like the secrets
+  # above and like DMS's ~/.config/niri on dev-desktop. nixpkgs patches
+  # upstream's download script to write into $PWD, hence the subshell cd.
+  transcribe = pkgs.writeShellApplication {
+    name = "openclaw-transcribe";
+    runtimeInputs = [
+      pkgs.whisper-cpp
+      pkgs.ffmpeg
+      pkgs.coreutils
+    ];
+    text = ''
+      model_dir="''${XDG_CACHE_HOME:-$HOME/.cache}/whisper-cpp"
+      model_file="$model_dir/ggml-${whisperModel}.bin"
+
+      if [ ! -f "$model_file" ]; then
+        mkdir -p "$model_dir"
+        ( cd "$model_dir" && whisper-cpp-download-ggml-model ${whisperModel} ) >&2
+      fi
+
+      # Telegram voice notes are opus in ogg; feed whisper the 16kHz mono wav
+      # it wants rather than relying on its optional ffmpeg decode path.
+      wav="$(mktemp --suffix=.wav)"
+      trap 'rm -f "$wav"' EXIT
+      ffmpeg -nostdin -loglevel error -y -i "$1" -ar 16000 -ac 1 -c:a pcm_s16le "$wav" >&2
+
+      # -l auto: German and English voice notes both work.
+      # -nt/-np: transcript only, no timestamps and no progress chatter.
+      whisper-cli -m "$model_file" -f "$wav" -l auto -nt -np
+    '';
+  };
 in
 {
   imports = [ nix-openclaw.homeManagerModules.openclaw ];
@@ -42,11 +86,18 @@ in
       logPath = "${config.home.homeDirectory}/.openclaw/logs/gateway.log";
     };
 
+    # The gateway wrapper builds its own PATH and does not inherit the user
+    # profile, so the Claude CLI has to be named explicitly here — without it
+    # the claude-cli runtime below has nothing to exec.
+    runtimePackages = [ claudeCode ];
+
     # Values here are *file paths*, not secrets: the generated gateway wrapper
     # cats the file at startup and exports its contents. (A name ending in
     # _FILE would get the path exported instead.) Nothing reaches the store.
+    #
+    # Deliberately no ANTHROPIC_API_KEY: if it were set, the Claude CLI would
+    # silently switch from the subscription to pay-as-you-go API billing.
     environment = {
-      ANTHROPIC_API_KEY = "${secrets}/anthropic-api-key";
       OPENCLAW_GATEWAY_TOKEN = "${secrets}/gateway-token";
     };
 
@@ -55,9 +106,11 @@ in
     config = {
       gateway = {
         mode = "local";
-        # Loopback only. No firewall hole is opened for it; reach the control
-        # UI over ssh: `ssh -L 18789:localhost:18789 openclaw`.
-        bind = "loopback";
+        # Reachable from the LAN, not just localhost. OpenClaw refuses to start
+        # a non-loopback bind without token or password auth, which is what the
+        # auth block below provides. Port 18789 is opened in
+        # modules/services/openclaw.nix — keep the two in sync.
+        bind = "lan";
         port = 18789;
         auth = {
           mode = "token";
@@ -67,6 +120,12 @@ in
             id = "OPENCLAW_GATEWAY_TOKEN";
           };
         };
+        # Plain http on a LAN address: the control UI refuses to send the token
+        # over an unencrypted non-loopback connection unless this is set. The
+        # trade-off is real — anyone sniffing the LAN sees the token. The fix,
+        # when it matters, is Tailscale (`bind = "tailnet"`) or a TLS-
+        # terminating reverse proxy, and then this flag goes away.
+        controlUi.allowInsecureAuth = true;
       };
 
       channels.telegram = {
@@ -78,31 +137,53 @@ in
         groups."*".requireMention = true;
       };
 
-      models.providers = {
-        anthropic.apiKey = {
-          source = "env";
-          provider = "default";
-          id = "ANTHROPIC_API_KEY";
-        };
-
-        # Local models. OpenClaw discovers the served tags from the box itself,
-        # so no models list is declared here — `openclaw models list` shows what
-        # is actually available, and any of them can be picked at runtime as
-        # `ollama/<tag>`. timeoutSeconds is raised because a LAN box on CPU can
-        # take minutes for a first token.
-        ollama = {
-          api = "ollama";
-          baseUrl = ollamaBaseUrl;
-          timeoutSeconds = 600;
-        };
+      # Local models. OpenClaw discovers the served tags from the box itself,
+      # so no models list is declared here — `openclaw models list` shows what
+      # is actually available, and any of them can be picked at runtime as
+      # `ollama/<tag>`. timeoutSeconds is raised because a LAN box on CPU can
+      # take minutes for a first token.
+      models.providers.ollama = {
+        api = "ollama";
+        baseUrl = ollamaBaseUrl;
+        timeoutSeconds = 600;
       };
 
-      agents.defaults.model = {
-        primary = "anthropic/claude-opus-5";
-        # Add a local fallback once you know which tag 10.0.0.234 serves, e.g.
-        #   fallbacks = [ "ollama/qwen3:8b" ];
-        # Left unset on purpose: a fallback pointing at a tag the box does not
-        # have fails at request time, not at build time.
+      agents.defaults = {
+        model = {
+          primary = "anthropic/claude-opus-5";
+          # Add a local fallback once you know which tag 10.0.0.234 serves, e.g.
+          #   fallbacks = [ "ollama/qwen3:8b" ];
+          # Left unset on purpose: a fallback pointing at a tag the box does not
+          # have fails at request time, not at build time.
+        };
+
+        # Subscription, not API key. Anthropic blocks subscription OAuth for
+        # third-party apps, and the one sanctioned path is reusing a Claude
+        # Code login on the same host: the model reference stays canonical
+        # `anthropic/*` and only the execution backend changes. Requires a
+        # one-time interactive `claude` login as rvo on this box — see CLAUDE.md.
+        models."anthropic/claude-opus-5".agentRuntime.id = "claude-cli";
+      };
+
+      # Voice notes in, text out. Without an explicit model OpenClaw would
+      # auto-detect (reply model → cloud provider creds → local CLIs); pinning
+      # the CLI keeps audio local and off the subscription's quota.
+      tools.media = {
+        models = [
+          {
+            type = "cli";
+            command = "${lib.getExe transcribe}";
+            args = [ "{{AttachmentPath}}" ];
+            capabilities = [ "audio" ];
+            timeoutSeconds = 300;
+          }
+        ];
+        audio = {
+          enabled = true;
+          # Echo what was understood — a wrong transcript is otherwise invisible
+          # until the agent answers the wrong question.
+          echoTranscript = true;
+        };
       };
     };
 

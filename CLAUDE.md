@@ -166,20 +166,59 @@ Before the first `sys-pull` on a fresh box:
 
 ```
 install -m600 /dev/stdin /var/lib/openclaw-secrets/telegram-bot-token <<< '<BotFather token>'
-install -m600 /dev/stdin /var/lib/openclaw-secrets/anthropic-api-key  <<< '<sk-ant-...>'
 openssl rand -hex 32 | install -m600 /dev/stdin /var/lib/openclaw-secrets/gateway-token
 ```
 
 Then replace the placeholder `allowFrom` Telegram user id in
 `home/openclaw.nix` — an unedited list means the bot ignores every message.
 
-Models: Anthropic is primary, with a LAN ollama at `http://10.0.0.234:11434`
-declared as a second provider. No model list is pinned for it — run
-`openclaw models list` and reference tags as `ollama/<tag>`.
+### openclaw one-time steps
 
-The gateway binds loopback and no firewall port is opened; reach the control UI
-with `ssh -L 18789:localhost:18789 openclaw`. Service:
-`systemctl --user status openclaw-gateway`, logs at `~/.openclaw/logs/`.
+Two things are runtime state, not rebuild output, and both are per-machine:
+
+1. **`claude` login as rvo.** Claude runs on the subscription, not an API key.
+   Anthropic blocks subscription OAuth for third-party apps; the sanctioned
+   path is reusing a Claude Code login on the same host, so the config keeps
+   the canonical `anthropic/claude-opus-5` reference and sets
+   `agents.defaults.models."anthropic/claude-opus-5".agentRuntime.id =
+   "claude-cli"`. Run `claude` once as rvo and log in — until then every
+   Anthropic turn fails. Never set `ANTHROPIC_API_KEY` on this host: it
+   silently flips the CLI to pay-as-you-go API billing.
+2. **Whisper weights.** The first voice message downloads `ggml-small.bin`
+   (~500MB) into `~/.cache/whisper-cpp`, so that first reply is slow. Warm it
+   with `openclaw-transcribe <some.ogg>`.
+
+### Voice notes
+
+Inbound audio is transcribed locally by a `writeShellApplication` wrapper
+(`home/openclaw.nix`) around ffmpeg + whisper.cpp, wired in as an explicit
+`tools.media.models` CLI entry. Explicit rather than relying on OpenClaw's
+auto-detection, which would otherwise reach for a cloud provider first.
+`echoTranscript` is on so a misheard note is visible. The ggml model is not in
+nixpkgs, hence the runtime download above; change `whisperModel` in
+`home/openclaw.nix` to trade accuracy for speed.
+
+Models: Anthropic (via the CLI, see above) is primary, with a LAN ollama at
+`http://10.0.0.234:11434` declared as a second provider. No model list is
+pinned for it — run `openclaw models list` and reference tags as
+`ollama/<tag>`.
+
+### Network exposure
+
+The gateway binds the LAN address (`gateway.bind = "lan"`), so the control UI
+is reachable at `http://<host-ip>:18789` from the network.
+`modules/services/openclaw.nix` opens 18789 to `10.0.0.0/24` only, via
+`networking.firewall.extraCommands` (`allowedTCPPorts` cannot express a source
+restriction). Two consequences worth remembering:
+
+- OpenClaw refuses a non-loopback bind without token or password auth, so
+  `gateway.auth` is load-bearing, not decoration.
+- Plain http off loopback needs `gateway.controlUi.allowInsecureAuth = true`,
+  which means the token crosses the LAN in clear. Moving to
+  `bind = "tailnet"` or a TLS reverse proxy is what removes that flag.
+
+Service: `systemctl --user status openclaw-gateway`, logs at
+`~/.openclaw/logs/`.
 
 ## Design docs
 

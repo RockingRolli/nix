@@ -1,8 +1,9 @@
 { config, pkgs, lib, nix-openclaw, ... }:
 
 # System-side half of the OpenClaw host. The agent itself is user-scoped and
-# lives in home/openclaw.nix — this module only provides the four things
-# home-manager cannot do from inside the user session.
+# lives in home/openclaw.nix — this module only provides what home-manager
+# cannot do from inside the user session: the overlay, the binary cache,
+# lingering, the secrets directory, and the firewall hole.
 #
 # Why the gateway runs as rvo (home-manager) and not as a system service:
 # nix-openclaw also ships `nixosModules.openclaw-gateway`, but that module is
@@ -11,6 +12,15 @@
 # live in the home-manager module, which upstream calls the "golden path".
 # Running as rvo also means the agent's tools see the same dev environment the
 # user has (nix-ld, docker group, ssh keys), which is the whole point here.
+
+let
+  # The gateway is reachable from the LAN (gateway.bind = "lan" in
+  # home/openclaw.nix). Keep port and CIDR in sync with that file; the CIDR is
+  # inferred from the ollama box at 10.0.0.234 and is the one line to change if
+  # the network is not a /24.
+  gatewayPort = 18789;
+  lanCidr = "10.0.0.0/24";
+in
 
 {
   # nix-openclaw is not in nixpkgs: openclaw and its bundled tools only exist
@@ -42,6 +52,16 @@
     "d /var/lib/openclaw-secrets 0700 rvo users - -"
   ];
 
-  # No firewall hole: the gateway binds loopback (gateway.bind = "loopback").
-  # Reach the control UI with `ssh -L 18789:localhost:18789 openclaw`.
+  # The gateway listens on the LAN address, so the port has to be opened — but
+  # only to the LAN. This is an agent that runs shell commands on request, so
+  # the blast radius of a stray route or a port-forward is the whole box; the
+  # gateway's own token auth is the second lock, not the first.
+  #
+  # extraCommands rather than allowedTCPPorts because that option cannot
+  # express a source restriction. It is iptables-only, which is what the NixOS
+  # firewall uses by default here (nftables is opt-in and interacts badly with
+  # docker); IPv6 is deliberately not opened.
+  networking.firewall.extraCommands = ''
+    iptables -I nixos-fw -p tcp -s ${lanCidr} --dport ${toString gatewayPort} -j nixos-fw-accept
+  '';
 }
