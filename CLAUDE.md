@@ -85,8 +85,9 @@ hostname and bootloader.
 - `modules/virtualisation/{podman,docker}.nix` — the container runtime. Every
   host imports **exactly one** (they're mutually exclusive — both own the
   `docker` CLI and daemon socket, so importing both is a build-time conflict).
-  `docker.nix` (Docker + compose v2) is used by `laptop`, `dev-desktop`, and
-  `tepavi-dev`; `podman.nix` (with `dockerCompat`) remains on `proj-api`. The
+  `docker.nix` (Docker + compose v2) is used by `laptop`, `dev-desktop`,
+  `tepavi-dev`, and `openclaw`; `podman.nix` (with `dockerCompat`) remains on
+  `proj-api`. The
   `d`/`dc` fish functions in
   `home/common.nix` detect the runtime at shell startup, so the one shared home
   config works on both.
@@ -97,6 +98,10 @@ hostname and bootloader.
   standalone `homeConfigurations.rvo`. fish + dev tools + git + Claude Code.
 - `home/gui.nix` — GUI-only home-manager additions, layered on top of
   `common.nix` only for GUI hosts.
+- `modules/services/openclaw.nix` + `home/openclaw.nix` — the OpenClaw agent,
+  split the same way: system prerequisites (overlay, linger, secrets dir,
+  binary cache) vs. the user-scoped gateway config. Only `openclaw` imports
+  them. See "openclaw host" below.
 
 **Two separate layers — don't confuse them:** system modules (`modules/`) vs.
 user/home-manager config (`home/`). Headless hosts import only `common.nix`; GUI
@@ -131,6 +136,50 @@ a service, delete its import line.
 After first login on `dev-desktop`, run `dms setup niri` (interactive TUI) once to
 populate `~/.config/niri/`. DMS owns that directory as user-mutable state; Home
 Manager does not write it.
+
+## openclaw host
+
+Runs an OpenClaw agent (Telegram in, tools out) as a systemd **user** service
+under `rvo`. Packaging comes from the `nix-openclaw` flake input — openclaw is
+not in nixpkgs, so the input is not optional. Two upstream modules exist; this
+repo uses the home-manager one (`homeManagerModules.openclaw`), which is the
+supported path and carries plugin/skill/workspace wiring. The NixOS module
+(`nixosModules.openclaw-gateway`) is a bare systemd unit with none of that.
+
+Consequences worth knowing before editing `home/openclaw.nix`:
+
+- The gateway runs with `OPENCLAW_NIX_MODE=1`, so `openclaw plugins install`
+  and friends deliberately fail. Plugins are `bundledPlugins` /
+  `runtimePlugins` in the nix config plus a rebuild — never imperative.
+- `~/.openclaw/openclaw.json` is generated and force-symlinked on activation.
+  Hand edits are lost. `programs.openclaw.config` is schema-typed, so a wrong
+  key is an eval error, not silently-ignored JSON.
+- `users.users.rvo.linger` (in `modules/services/openclaw.nix`) is what keeps
+  the bot alive without a login session and across reboots; the `[Install]`
+  section that makes it start at all is added in `home/openclaw.nix`, because
+  upstream's unit ships without one.
+
+Secrets are runtime files under `/var/lib/openclaw-secrets` (dir created by
+tmpfiles, contents written once by hand), matching the repo's
+`mutableUsers = true` stance — nothing secret in git, nothing in the store.
+Before the first `sys-pull` on a fresh box:
+
+```
+install -m600 /dev/stdin /var/lib/openclaw-secrets/telegram-bot-token <<< '<BotFather token>'
+install -m600 /dev/stdin /var/lib/openclaw-secrets/anthropic-api-key  <<< '<sk-ant-...>'
+openssl rand -hex 32 | install -m600 /dev/stdin /var/lib/openclaw-secrets/gateway-token
+```
+
+Then replace the placeholder `allowFrom` Telegram user id in
+`home/openclaw.nix` — an unedited list means the bot ignores every message.
+
+Models: Anthropic is primary, with a LAN ollama at `http://10.0.0.234:11434`
+declared as a second provider. No model list is pinned for it — run
+`openclaw models list` and reference tags as `ollama/<tag>`.
+
+The gateway binds loopback and no firewall port is opened; reach the control UI
+with `ssh -L 18789:localhost:18789 openclaw`. Service:
+`systemctl --user status openclaw-gateway`, logs at `~/.openclaw/logs/`.
 
 ## Design docs
 
