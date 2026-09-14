@@ -170,9 +170,12 @@ in
 
       channels.telegram = {
         tokenFile = "${secrets}/telegram-bot-token";
-        # REPLACE: your Telegram user id, from @userinfobot. Everything not in
-        # this list is ignored by the bot, so an empty/wrong list means silence.
-        allowFrom = [ 123456789 ];
+        # rvo's Telegram user id (from @userinfobot). This is an allowlist:
+        # everything not in it is ignored by the bot, so a wrong or empty list
+        # means silence rather than an error. Add ids here to let more people
+        # talk to the agent — it runs shell commands on request, so treat this
+        # as the access control it is.
+        allowFrom = [ 611056438 ];
         # Groups must @mention the bot; direct messages always go through.
         groups."*".requireMention = true;
       };

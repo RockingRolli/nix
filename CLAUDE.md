@@ -170,8 +170,10 @@ install -m600 /dev/stdin /var/lib/openclaw-secrets/telegram-bot-token <<< '<BotF
 openssl rand -hex 32 | install -m600 /dev/stdin /var/lib/openclaw-secrets/gateway-token
 ```
 
-Then replace the placeholder `allowFrom` Telegram user id in
-`home/openclaw.nix` — an unedited list means the bot ignores every message.
+`channels.telegram.allowFrom` in `home/openclaw.nix` is the bot's allowlist,
+by Telegram user id (from @userinfobot). Anyone not listed is ignored silently,
+so a wrong id looks identical to a broken bot. The agent runs shell commands on
+request — adding an id there is granting shell access to this box.
 
 ### The gateway token lives in OpenClaw's secret store
 
