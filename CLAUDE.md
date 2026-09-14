@@ -206,19 +206,32 @@ pinned for it — run `openclaw models list` and reference tags as
 ### Network exposure
 
 The gateway binds the LAN address (`gateway.bind = "lan"`), so the control UI
-is reachable at `http://<host-ip>:18789` from the network.
+is reachable at `https://<host-ip>:18789` from the network.
 `modules/services/openclaw.nix` opens 18789 to `10.0.0.0/24` only, via
 `networking.firewall.extraCommands` (`allowedTCPPorts` cannot express a source
-restriction). Two consequences worth remembering:
+restriction). Three things to know:
 
 - OpenClaw refuses a non-loopback bind without token or password auth, so
   `gateway.auth` is load-bearing, not decoration.
-- Plain http off loopback needs `gateway.controlUi.allowInsecureAuth = true`,
-  which means the token crosses the LAN in clear. Moving to
-  `bind = "tailnet"` or a TLS reverse proxy is what removes that flag.
+- **https, not http.** The control UI authenticates browsers by device
+  identity, which needs a secure context; over plain http to a LAN IP it hangs
+  on "device identity required" regardless of the token. Hence
+  `gateway.tls.autoGenerate` — self-signed, so expect a one-time cert
+  interstitial per browser. The old `controlUi.allowInsecureAuth` escape hatch
+  is gone from the schema and had stopped working before that.
+- Tailscale (`bind = "tailnet"` + `tailscale.mode = "serve"`) or a
+  TLS-terminating proxy is the clean version and removes the `tls` block. An
+  ssh tunnel to localhost needs none of it — loopback devices auto-approve.
 
 Service: `systemctl --user status openclaw-gateway`, logs at
 `~/.openclaw/logs/`.
+
+**Schema drift is real.** nix-openclaw regenerates
+`nix/generated/openclaw-config-options.nix` from upstream OpenClaw, and keys
+move or vanish between releases (`gateway.controlUi.allowInsecureAuth` did).
+When `nix flake check` reports an option that "does not exist", check the
+generated file in the locked input rather than the upstream docs — the docs lag
+and still reference removed options.
 
 ## Design docs
 
