@@ -102,6 +102,11 @@ hostname and bootloader.
   split the same way: system prerequisites (overlay, linger, secrets dir, the
   openssl/ffmpeg system packages OpenClaw insists on) vs. the user-scoped
   gateway config. Only `openclaw` imports them. See "openclaw host" below.
+- `pkgs/` — package expressions for software not in nixpkgs, pulled in with
+  `pkgs.callPackage ../pkgs/<name>.nix { }` from whichever module needs it.
+  Not a module layer and not wired into the flake outputs; it exists because a
+  few things (currently the Amazing Marvin MCP server) have to be in the
+  closure rather than fetched at runtime.
 
 **Two separate layers — don't confuse them:** system modules (`modules/`) vs.
 user/home-manager config (`home/`). Headless hosts import only `common.nix`; GUI
@@ -146,6 +151,40 @@ repo uses the home-manager one (`homeManagerModules.openclaw`), which is the
 supported path and carries plugin/skill/workspace wiring. The NixOS module
 (`nixosModules.openclaw-gateway`) is a bare systemd unit with none of that.
 
+### Read the docs in the package, not the website
+
+**Start every openclaw config question here.** OpenClaw ships its complete
+documentation — ~1250 markdown files — inside the npm package, so it is already
+in the nix store at the exact version this repo has pinned. The published site
+lags and still describes removed options; this tree cannot, because it is the
+same build as the running gateway.
+
+```
+nix eval --raw .#nixosConfigurations.openclaw.pkgs.openclaw-gateway.outPath
+# → /nix/store/…-openclaw-gateway-<version>/lib/node_modules/openclaw/docs
+```
+
+Worth knowing what is in there: `docs/channels/telegram/` (one page per concern
+— access control, rich messages, messaging, media, troubleshooting),
+`docs/gateway/config-*.md` (the configuration reference, including
+`configuration-examples.md`), `docs/concepts/memory*.md`,
+`docs/reference/memory-config.md`, `docs/tools/`, `docs/plugins/`. Every
+question answered in the sections below came out of that tree.
+
+Three companion sources for things the docs do not cover:
+
+- **The locked `nix-openclaw` source**, at
+  `nix eval --raw --impure --expr '(builtins.getFlake (toString ./.)).inputs.nix-openclaw.outPath'`.
+  `nix/generated/openclaw-config-options.nix` there is the authoritative list
+  of what this repo can set — check it when `nix flake check` says an option
+  "does not exist". `nix/generated/openclaw-runtime-plugins/` holds the locked
+  plugin ids and versions.
+- **A runtime plugin's `openclaw.plugin.json`** (in the plugin's own store
+  path) — its `configSchema` and `uiHints` are the only description of what
+  goes under `plugins.entries.<id>.config`, which is untyped on both sides.
+- **The plugin's `dist/*.js`** when even that is silent — e.g. exactly which
+  config paths and env vars a provider reads, and in what order.
+
 Consequences worth knowing before editing `home/openclaw.nix`:
 
 - The gateway runs with `OPENCLAW_NIX_MODE=1`, so `openclaw plugins install`
@@ -168,12 +207,27 @@ Before the first `sys-pull` on a fresh box:
 ```
 install -m600 /dev/stdin /var/lib/openclaw-secrets/telegram-bot-token <<< '<BotFather token>'
 openssl rand -hex 32 | install -m600 /dev/stdin /var/lib/openclaw-secrets/gateway-token
+install -m600 /dev/stdin /var/lib/openclaw-secrets/amazing-marvin-api-key <<< '<Marvin API token>'
 ```
 
 `channels.telegram.allowFrom` in `home/openclaw.nix` is the bot's allowlist,
 by Telegram user id (from @userinfobot). Anyone not listed is ignored silently,
 so a wrong id looks identical to a broken bot. The agent runs shell commands on
 request — adding an id there is granting shell access to this box.
+`dmPolicy = "allowlist"` is set alongside it deliberately: the upstream default
+is `"pairing"`, under which the effective DM allowlist is `allowFrom` *plus*
+whatever approvals sit in the runtime pairing store, so access is partly state
+no rebuild resets. The two have to move together — `allowlist` with an empty
+`allowFrom` is rejected by config validation.
+
+`commands.ownerAllowFrom` is separate and also required. Being in `allowFrom`
+grants channel access, not owner authority, and owner-only commands
+(`/restart`, `/activation`, config writes) plus exec-approval prompts check the
+owner list. It normally bootstraps from the first approved DM pairing — which
+cannot happen here, both because `dmPolicy = "allowlist"` means there is no
+pairing to approve and because the bootstrap would write into `openclaw.json`,
+which this module force-symlinks read-only out of the store. Entries are
+channel-qualified (`telegram:<user id>`), not bare numbers.
 
 ### The gateway token lives in OpenClaw's secret store
 
@@ -228,6 +282,100 @@ Two things are runtime state, not rebuild output, and both are per-machine:
 2. **Whisper weights.** The first voice message downloads `ggml-small.bin`
    (~500MB) into `~/.cache/whisper-cpp`, so that first reply is slow. Warm it
    with `openclaw-transcribe <some.ogg>`.
+
+### Agent identity
+
+There is no top-level `identity` key — it is per agent, at
+`agents.entries.main.identity`. `main` is OpenClaw's built-in default agent id
+(`DEFAULT_AGENT_ID`), so using that attribute name attaches the identity to the
+agent that already exists; any other name creates a second agent and orphans
+the first one's sessions and memories.
+
+`identity` derives more than it displays: `ackReaction` comes from
+`identity.emoji`, and the group mention patterns come from `name`/`emoji`. The
+first of those is a live trap — Telegram only accepts reactions from its own
+fixed set, and the configured 🫪 (U+1FAEA) is not in it, so
+`channels.telegram.ackReaction` is set explicitly to override the derivation.
+`identity.avatar` must be a workspace-relative file, an `http(s)` URL or a
+`data:` URI; a placeholder string is a broken path, not an empty field.
+
+### Inline buttons (and why `"dm"` is the wrong scope)
+
+`channels.telegram.capabilities.inlineButtons` takes `off | dm | group | all |
+allowlist` (default `allowlist`), and this repo sets `"all"`. `dm` and `group`
+are not merely narrower: they add a check that the send target is a **numeric**
+chat id and throw `Telegram inline buttons require a numeric chat id` when it
+is not, which is how a config that reads correctly produces buttons that never
+appear. `all` and `allowlist` skip that check.
+
+Receiving a button and pressing one are authorized separately. A DM callback is
+always checked against the DM allowlist (`callback-allowlist` mode), so a bot
+whose DM access came only from a pairing approval can render buttons that do
+nothing when tapped. That is the second reason `dmPolicy`/`allowFrom` are
+explicit.
+
+`richMessages` (Bot API 10.3 typed blocks — tables, checklists, collapsible
+sections) is deliberately off: upstream keeps it off because several current
+clients render accepted rich messages as "unsupported message".
+
+### Web search: SearXNG
+
+`tools.web.search.provider = "searxng"` plus the runtime plugin; the instance
+URL is plugin config at `plugins.entries.searxng.config.webSearch.baseUrl`.
+Three things that are not obvious:
+
+- The provider must be named explicitly. Key-free providers never win
+  OpenClaw's auto-detection implicitly.
+- The SearXNG instance needs `json` under `search.formats` in its
+  `settings.yml`. The plugin uses the native `format=json` endpoint, not HTML
+  scraping, and an instance without it fails every query.
+- `http://` base URLs are only accepted when they resolve to a private or
+  loopback address — public hosts must be `https://`. The LAN instance is
+  fine; this is why it does not need TLS.
+
+### Memory
+
+Two layers, and they are not alternatives:
+
+- **Built-in** — Markdown in the agent workspace (`MEMORY.md`, `USER.md`,
+  `memory/YYYY-MM-DD.md`) indexed for `memory_search`. `memory.search.enabled`
+  defaults to **true** and `memory.search.provider` defaults to **`openai`**,
+  so on a host with no OpenAI key the vector half is dead by default. Setting
+  `provider = "ollama"` is what makes the shipped memory path work at all.
+- **LanceDB** — the `memory-lancedb` runtime plugin, claimed via
+  `plugins.slots.memory`. Exactly one plugin owns that slot; it supplies
+  `memory_store` / `memory_recall` / `memory_forget` and a vector table under
+  `~/.openclaw/memory/lancedb`. Inspect it with `openclaw ltm list|search|stats`.
+
+Both embed through the LAN ollama box with `bge-m3:567m` (multilingual, which
+matters for German). `embedding.dimensions = 1024` is **required**: OpenClaw
+only knows the vector width of OpenAI's two embedding models and throws
+"unsupported embedding model" for anything else without it. Changing the model
+or dimensions invalidates stored vectors — the built-in index pauses itself and
+warns (`openclaw memory index --force` rebuilds), LanceDB does not re-embed at
+all and needs its table rebuilt by hand.
+
+Trade-off worth knowing: LanceDB's recall does not get the protected
+cross-conversation transcript authorization the built-in provider has, so
+`memory.search.rememberAcrossConversations` is skipped while LanceDB owns the
+slot. `openclaw doctor` reports this.
+
+### MCP servers
+
+`mcp.servers.<name>`, stdio or HTTP. Two NixOS-specific consequences:
+
+- **Packaging.** `mcp.servers.*.command` has to exist before the gateway
+  starts, so a server cannot come from `pipx`/`uvx`, which resolve at runtime.
+  `pkgs/` holds the nix expressions for ones not in nixpkgs —
+  `amazing-marvin-mcp.nix` is the first.
+- **Secrets.** `mcp.servers.*.env` is typed as plain strings and lands verbatim
+  in the generated `openclaw.json` in the nix store, i.e. world-readable. The
+  pattern here is a `writeShellApplication` wrapper that reads the key from
+  `/var/lib/openclaw-secrets` at spawn time and `exec`s the server, same shape
+  as the transcription wrapper.
+
+Saving a definition proves nothing; `openclaw mcp doctor <name> --probe` opens
+a real connection and lists the tools the server advertises.
 
 ### Voice notes
 
@@ -299,16 +447,20 @@ does not paper over any of this — it carries no openssl handling at all.
 `nix/generated/openclaw-config-options.nix` from upstream OpenClaw, and keys
 move or vanish between releases (`gateway.controlUi.allowInsecureAuth` did).
 When `nix flake check` reports an option that "does not exist", check the
-generated file in the locked input rather than the upstream docs — the docs lag
-and still reference removed options.
+generated file in the locked input rather than the published docs — the website
+lags and still references removed options. The in-package docs tree (see "Read
+the docs in the package" above) does not have that problem; it is pinned to the
+same release as the gateway.
 
 **`channels` is the one unvalidated block.** It is the only `freeformType =
 attrsOf anything` in the generated schema (`channels.defaults` is typed, the
 per-channel attrsets are not). So everything under `channels.telegram` —
 `tokenFile`, `allowFrom`, `groups` — passes straight through to
 `openclaw.json` unchecked, and a misspelled key is silently ignored rather than
-an eval error. Cross-check those keys against upstream, not against
-`nix flake check`.
+an eval error. Cross-check those keys against `docs/channels/<name>/` in the
+package, not against `nix flake check`. The same applies to
+`plugins.entries.<id>.config`, which is `attrsOf anything` on the nix side and
+only described by that plugin's `openclaw.plugin.json`.
 
 **Why the telegram token is a file and the gateway token is not.** Not an
 inconsistency: `channels.telegram.tokenFile` is read straight off disk by the
