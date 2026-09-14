@@ -215,8 +215,20 @@ in
     # templates into ~/.openclaw/workspace and owns them as runtime state.
   };
 
-  # nix-openclaw emits the unit but no [Install] section, so nothing wants it
-  # at login and a lingering session would never start it. This is what makes
-  # the bot come back on its own after a reboot.
-  systemd.user.services.openclaw-gateway.Install.WantedBy = [ "default.target" ];
+  systemd.user.services.openclaw-gateway = {
+    # nix-openclaw emits the unit but no [Install] section, so nothing wants it
+    # at login and a lingering session would never start it. This is what makes
+    # the bot come back on its own after a reboot.
+    Install.WantedBy = [ "default.target" ];
+
+    # Both flagged by `openclaw gateway status` as service config issues.
+    # KillMode=mixed sends SIGTERM to the main process only, so an in-flight
+    # agent turn drains instead of having its children killed underneath it;
+    # systemd's default (control-group) kills the lot at once. RestartSec is
+    # upstream's recommendation, mkForce because nix-openclaw hardcodes 1s.
+    Service = {
+      KillMode = "mixed";
+      RestartSec = lib.mkForce "5s";
+    };
+  };
 }

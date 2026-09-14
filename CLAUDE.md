@@ -99,9 +99,9 @@ hostname and bootloader.
 - `home/gui.nix` — GUI-only home-manager additions, layered on top of
   `common.nix` only for GUI hosts.
 - `modules/services/openclaw.nix` + `home/openclaw.nix` — the OpenClaw agent,
-  split the same way: system prerequisites (overlay, linger, secrets dir,
-  binary cache) vs. the user-scoped gateway config. Only `openclaw` imports
-  them. See "openclaw host" below.
+  split the same way: system prerequisites (overlay, linger, secrets dir, the
+  openssl/ffmpeg system packages OpenClaw insists on) vs. the user-scoped
+  gateway config. Only `openclaw` imports them. See "openclaw host" below.
 
 **Two separate layers — don't confuse them:** system modules (`modules/`) vs.
 user/home-manager config (`home/`). Headless hosts import only `common.nix`; GUI
@@ -207,9 +207,9 @@ pinned for it — run `openclaw models list` and reference tags as
 
 The gateway binds the LAN address (`gateway.bind = "lan"`), so the control UI
 is reachable at `https://<host-ip>:18789` from the network.
-`modules/services/openclaw.nix` opens 18789 to `10.0.0.0/24` only, via
+`modules/services/openclaw.nix` opens 18789 to `192.168.178.0/24` only, via
 `networking.firewall.extraCommands` (`allowedTCPPorts` cannot express a source
-restriction). Three things to know:
+restriction). Four things to know:
 
 - OpenClaw refuses a non-loopback bind without token or password auth, so
   `gateway.auth` is load-bearing, not decoration.
@@ -219,12 +219,40 @@ restriction). Three things to know:
   `gateway.tls.autoGenerate` — self-signed, so expect a one-time cert
   interstitial per browser. The old `controlUi.allowInsecureAuth` escape hatch
   is gone from the schema and had stopped working before that.
+- **`openssl` must be in `environment.systemPackages`** or the gateway dies
+  generating that cert and never opens the port. See "trusted system
+  directories" below.
 - Tailscale (`bind = "tailnet"` + `tailscale.mode = "serve"`) or a
   TLS-terminating proxy is the clean version and removes the `tls` block. An
   ssh tunnel to localhost needs none of it — loopback devices auto-approve.
 
 Service: `systemctl --user status openclaw-gateway`, logs at
 `~/.openclaw/logs/`.
+
+### "Trusted system directories" — the NixOS trap
+
+OpenClaw 2026.9.x resolves its infrastructure binaries (`openssl`, `ffmpeg`,
+`ffprobe`) with a resolver that **ignores `PATH` on purpose** — an
+anti-PATH-hijack measure — and searches a fixed list instead. On Linux:
+`/usr/bin`, `/bin`, `/usr/sbin`, `/sbin`, `/run/current-system/sw/bin`,
+`/snap/bin`. It only tests that the candidate is executable; it does not
+resolve symlinks, so a system-profile link into `/nix/store` is fine.
+
+Two consequences:
+
+- The **only** way to satisfy it on NixOS is `environment.systemPackages`, via
+  `/run/current-system/sw/bin`. Not `home.packages`, not the nix-openclaw
+  wrapper's own runtime PATH, not `programs.openclaw.runtimePackages` — all of
+  those are PATH, which the resolver never reads.
+- The failure mode is a hard throw, not a degrade: `<name> not found in trusted
+  system directories`. For openssl that kills gateway startup during TLS cert
+  generation, so `systemctl --user status` shows the unit "active (running)"
+  while nothing listens on the port. Check `~/.openclaw/logs/` — the reason is
+  only in the log, not in systemd.
+
+If a future release reaches for another system binary, this is the shape of the
+bug, and the fix is one more entry in `environment.systemPackages`. nix-openclaw
+does not paper over any of this — it carries no openssl handling at all.
 
 **Schema drift is real.** nix-openclaw regenerates
 `nix/generated/openclaw-config-options.nix` from upstream OpenClaw, and keys

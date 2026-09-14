@@ -15,11 +15,13 @@
 
 let
   # The gateway is reachable from the LAN (gateway.bind = "lan" in
-  # home/openclaw.nix). Keep port and CIDR in sync with that file; the CIDR is
-  # inferred from the ollama box at 10.0.0.234 and is the one line to change if
-  # the network is not a /24.
+  # home/openclaw.nix). Keep port and CIDR in sync with that file. This is the
+  # subnet the box actually sits on — `openclaw gateway status` reports the
+  # dashboard at 192.168.178.153. It was originally guessed as 10.0.0.0/24 from
+  # the ollama address in home/openclaw.nix — but ollama lives on a different
+  # network the box only routes to, so that guess opened the port to nobody.
   gatewayPort = 18789;
-  lanCidr = "10.0.0.0/24";
+  lanCidr = "192.168.178.0/24";
 in
 
 {
@@ -28,17 +30,37 @@ in
   # HM module reads this same pkgs, so the overlay must be applied system-wide.
   nixpkgs.overlays = [ nix-openclaw.overlays.default ];
 
-  # OpenClaw is a pnpm/node build; without a cache a rebuild compiles the whole
-  # gateway locally. garnix is upstream's own CI cache (the keys come from
-  # nix-openclaw's flake nixConfig, which a non-trusted flake consumer does not
-  # get automatically — hence declaring them here). extra-* so the nixpkgs
-  # cache is kept rather than replaced.
-  nix.settings = {
-    extra-substituters = [ "https://cache.garnix.io" ];
-    extra-trusted-public-keys = [
-      "cache.garnix.io:CTFPyKSLcx5RMJKfLo5EEPUObbA78b0YQ2DTCJXqr9g="
-    ];
-  };
+  # Load-bearing, not convenience packages. OpenClaw 2026.9.x resolves its
+  # infrastructure binaries — openssl, ffmpeg, ffprobe — through a resolver
+  # that deliberately ignores PATH and only accepts a fixed set of OS-managed
+  # directories, to block PATH-hijacking. On Linux that set is /usr/bin, /bin,
+  # /usr/sbin, /sbin, /run/current-system/sw/bin and /snap/bin, so on NixOS the
+  # system profile is the only entry that can be populated — and
+  # environment.systemPackages is the only thing that puts a binary there.
+  # Nothing in the nix-openclaw wrapper's PATH counts.
+  #
+  #   - openssl: the gateway generates its TLS cert at startup. Missing, it
+  #     throws "openssl not found in trusted system directories" and never
+  #     opens its port. Also makes the `openssl rand -hex 32` secret setup
+  #     documented below runnable on the box in the first place.
+  #   - ffmpeg (ships ffprobe): OpenClaw's own media probe throws the same way
+  #     on inbound attachments. Separate from the ffmpeg inside the transcribe
+  #     wrapper in home/openclaw.nix, which is a private runtime input.
+  #
+  # The resolver only checks the path is executable and does not resolve
+  # symlinks, so the system-profile symlink into /nix/store is accepted as-is.
+  environment.systemPackages = [
+    pkgs.openssl
+    pkgs.ffmpeg
+  ];
+
+  # No binary cache for openclaw. This used to declare cache.garnix.io with its
+  # key; nix-openclaw retired that cache and the host no longer resolves at all
+  # (NXDOMAIN), so it was a dead substituter every rebuild had to time out on.
+  # Consequence: the gateway is a pnpm/node build compiled locally, so the
+  # first rebuild after a version bump is slow. If upstream publishes a new
+  # cache, its substituter and key go here — a non-trusted flake consumer does
+  # not inherit them from nix-openclaw's own nixConfig.
 
   # The gateway is a systemd *user* service. Without lingering it would only
   # run while rvo has a login session open, i.e. the bot would go silent when
