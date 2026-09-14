@@ -153,7 +153,8 @@ Consequences worth knowing before editing `home/openclaw.nix`:
   `runtimePlugins` in the nix config plus a rebuild — never imperative.
 - `~/.openclaw/openclaw.json` is generated and force-symlinked on activation.
   Hand edits are lost. `programs.openclaw.config` is schema-typed, so a wrong
-  key is an eval error, not silently-ignored JSON.
+  key is an eval error, not silently-ignored JSON — **except under
+  `channels.<name>`**, see below.
 - `users.users.rvo.linger` (in `modules/services/openclaw.nix`) is what keeps
   the bot alive without a login session and across reboots; the `[Install]`
   section that makes it start at all is added in `home/openclaw.nix`, because
@@ -298,6 +299,23 @@ move or vanish between releases (`gateway.controlUi.allowInsecureAuth` did).
 When `nix flake check` reports an option that "does not exist", check the
 generated file in the locked input rather than the upstream docs — the docs lag
 and still reference removed options.
+
+**`channels` is the one unvalidated block.** It is the only `freeformType =
+attrsOf anything` in the generated schema (`channels.defaults` is typed, the
+per-channel attrsets are not). So everything under `channels.telegram` —
+`tokenFile`, `allowFrom`, `groups` — passes straight through to
+`openclaw.json` unchecked, and a misspelled key is silently ignored rather than
+an eval error. Cross-check those keys against upstream, not against
+`nix flake check`.
+
+**Why the telegram token is a file and the gateway token is not.** Not an
+inconsistency: `channels.telegram.tokenFile` is read straight off disk by the
+one process that needs it (`tryReadSecretFileSync`, symlinks rejected), by both
+the gateway and `openclaw`'s account-inspection paths. It never goes through
+the SecretRef resolver, so it has none of the env-ref problem above. It could
+be moved to a store-backed `channels.telegram.botToken` SecretRef, but that
+would trade a readable, `install`-rotatable file for a write-only store entry
+and buy nothing.
 
 ## Design docs
 
