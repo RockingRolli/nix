@@ -172,6 +172,44 @@ openssl rand -hex 32 | install -m600 /dev/stdin /var/lib/openclaw-secrets/gatewa
 Then replace the placeholder `allowFrom` Telegram user id in
 `home/openclaw.nix` — an unedited list means the bot ignores every message.
 
+### The gateway token lives in OpenClaw's secret store
+
+`channels.telegram.tokenFile` reads its file directly, but the **gateway** auth
+token does not. `gateway.auth.token` is a store-backed SecretRef
+(`source = "store"`, `provider = "default"`, `id = "OPENCLAW_GATEWAY_TOKEN"`),
+resolved out of the team-scoped SQLite secret store in `~/.openclaw`. Seed it
+once, after the first `sys-pull`:
+
+```
+openclaw secrets store set OPENCLAW_GATEWAY_TOKEN \
+  --kind secret --value-file /var/lib/openclaw-secrets/gateway-token
+systemctl --user restart openclaw-gateway
+```
+
+(`--value` is env-kind only; secret-kind entries must come from `--value-file`,
+`-` for stdin.) Keep the file: secret-kind store entries are **write-only**, so
+`openclaw secrets store get` will not give the value back, and you need it to
+pair a browser with the control UI.
+
+Why not `source = "env"`, which is the obvious wiring and what this config used
+first: an env SecretRef is only resolvable by a process that has the variable.
+nix-openclaw's `programs.openclaw.environment` puts it in the gateway's systemd
+unit, so the daemon works — but every `openclaw` CLI invocation runs outside
+that unit, and device approval, pairing and probes all die with `gateway.auth.
+token is configured as a secret reference but is unavailable in this command
+path`. A store ref is readable by any command path. It is also what OpenClaw's
+own `setup` provisions.
+
+Two traps that made this hard to see:
+
+- nix-openclaw's env export helper does `if [[ -f "$value" ]]; then value=$(cat
+  "$value")`. When the file is missing it exports **the path string itself** as
+  the token. So a forgotten secret file yields a running gateway whose token is
+  `/var/lib/openclaw-secrets/gateway-token` — no error anywhere.
+- `openclaw gateway status` reports the same condition as a mild note (`SecretRef
+  is unresolved in this command path; probing without configured auth
+  credentials`), not a failure.
+
 ### openclaw one-time steps
 
 Two things are runtime state, not rebuild output, and both are per-machine:

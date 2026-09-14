@@ -22,6 +22,13 @@ let
   #   install -m600 /dev/stdin /var/lib/openclaw-secrets/telegram-bot-token <<< '<token from @BotFather>'
   #   openssl rand -hex 32 | install -m600 /dev/stdin /var/lib/openclaw-secrets/gateway-token
   #
+  # Only telegram-bot-token is read from here by config (channels.telegram
+  # below). gateway-token is *not* wired in: the gateway token lives in
+  # OpenClaw's own secret store and is seeded from that file once (see
+  # gateway.auth). Keep the file anyway — secret-kind store entries are
+  # write-only, so it is the only readable copy of the value you need to paste
+  # into the control UI.
+  #
   # No anthropic-api-key: Claude runs through the subscription-backed CLI, see
   # agents.defaults.models below.
   secrets = "/var/lib/openclaw-secrets";
@@ -91,15 +98,20 @@ in
     # the claude-cli runtime below has nothing to exec.
     runtimePackages = [ claudeCode ];
 
-    # Values here are *file paths*, not secrets: the generated gateway wrapper
-    # cats the file at startup and exports its contents. (A name ending in
-    # _FILE would get the path exported instead.) Nothing reaches the store.
+    # No `environment` block on purpose. It used to carry
+    # OPENCLAW_GATEWAY_TOKEN = "${secrets}/gateway-token", which the generated
+    # wrapper cats at startup — but that only ever populated the *gateway
+    # process*. Every `openclaw` CLI invocation runs outside the unit with no
+    # such variable, and an env-sourced SecretRef cannot be resolved from
+    # anywhere else, so device approval and pairing failed with "configured as
+    # a secret reference but is unavailable in this command path". The token is
+    # store-backed now (see gateway.auth below), which any command path can
+    # resolve. Worse, nix-openclaw's export helper only reads the file when it
+    # exists — a missing file silently exported the *path string itself* as the
+    # token.
     #
-    # Deliberately no ANTHROPIC_API_KEY: if it were set, the Claude CLI would
-    # silently switch from the subscription to pay-as-you-go API billing.
-    environment = {
-      OPENCLAW_GATEWAY_TOKEN = "${secrets}/gateway-token";
-    };
+    # Deliberately no ANTHROPIC_API_KEY either: if it were set, the Claude CLI
+    # would silently switch from the subscription to pay-as-you-go API billing.
 
     # Upstream OpenClaw config shape, schema-typed by nix-openclaw — a typo in
     # a key is an eval error rather than a silently ignored JSON field.
@@ -112,10 +124,24 @@ in
         # modules/services/openclaw.nix — keep the two in sync.
         bind = "lan";
         port = 18789;
+        # Store-backed SecretRef, not env-backed. OpenClaw keeps a team-scoped
+        # secret store in the SQLite state DB under ~/.openclaw, and a "store"
+        # ref resolves by reading it — so the gateway *and* every CLI command
+        # path get the token without anything being exported into a shell.
+        # This is what OpenClaw's own `setup` provisions; source = "env" only
+        # ever works for the process that has the variable.
+        #
+        # provider = "default" is the built-in alias for the store source; no
+        # entry under `secrets.providers` is needed for it. The id has to match
+        # /^[A-Z][A-Z0-9_]{0,127}$/.
+        #
+        # The value is runtime state written once, same stance as the secrets
+        # files — see CLAUDE.md for the `openclaw secrets store set` command.
+        # Nothing here reaches the nix store.
         auth = {
           mode = "token";
           token = {
-            source = "env";
+            source = "store";
             provider = "default";
             id = "OPENCLAW_GATEWAY_TOKEN";
           };
