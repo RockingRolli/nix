@@ -85,8 +85,9 @@ hostname and bootloader.
 - `modules/virtualisation/{podman,docker}.nix` — the container runtime. Every
   host imports **exactly one** (they're mutually exclusive — both own the
   `docker` CLI and daemon socket, so importing both is a build-time conflict).
-  `docker.nix` (Docker + compose v2) is used by `laptop`, `dev-desktop`, and
-  `tepavi-dev`; `podman.nix` (with `dockerCompat`) remains on `proj-api`. The
+  `docker.nix` (Docker + compose v2) is used by `laptop`, `dev-desktop`,
+  `tepavi-dev`, and `openclaw`; `podman.nix` (with `dockerCompat`) remains on
+  `proj-api`. The
   `d`/`dc` fish functions in
   `home/common.nix` detect the runtime at shell startup, so the one shared home
   config works on both.
@@ -97,6 +98,10 @@ hostname and bootloader.
   standalone `homeConfigurations.rvo`. fish + dev tools + git + Claude Code.
 - `home/gui.nix` — GUI-only home-manager additions, layered on top of
   `common.nix` only for GUI hosts.
+- `modules/services/openclaw.nix` + `home/openclaw.nix` — the OpenClaw agent,
+  split the same way: system prerequisites (overlay, linger, secrets dir,
+  binary cache) vs. the user-scoped gateway config. Only `openclaw` imports
+  them. See "openclaw host" below.
 
 **Two separate layers — don't confuse them:** system modules (`modules/`) vs.
 user/home-manager config (`home/`). Headless hosts import only `common.nix`; GUI
@@ -131,6 +136,102 @@ a service, delete its import line.
 After first login on `dev-desktop`, run `dms setup niri` (interactive TUI) once to
 populate `~/.config/niri/`. DMS owns that directory as user-mutable state; Home
 Manager does not write it.
+
+## openclaw host
+
+Runs an OpenClaw agent (Telegram in, tools out) as a systemd **user** service
+under `rvo`. Packaging comes from the `nix-openclaw` flake input — openclaw is
+not in nixpkgs, so the input is not optional. Two upstream modules exist; this
+repo uses the home-manager one (`homeManagerModules.openclaw`), which is the
+supported path and carries plugin/skill/workspace wiring. The NixOS module
+(`nixosModules.openclaw-gateway`) is a bare systemd unit with none of that.
+
+Consequences worth knowing before editing `home/openclaw.nix`:
+
+- The gateway runs with `OPENCLAW_NIX_MODE=1`, so `openclaw plugins install`
+  and friends deliberately fail. Plugins are `bundledPlugins` /
+  `runtimePlugins` in the nix config plus a rebuild — never imperative.
+- `~/.openclaw/openclaw.json` is generated and force-symlinked on activation.
+  Hand edits are lost. `programs.openclaw.config` is schema-typed, so a wrong
+  key is an eval error, not silently-ignored JSON.
+- `users.users.rvo.linger` (in `modules/services/openclaw.nix`) is what keeps
+  the bot alive without a login session and across reboots; the `[Install]`
+  section that makes it start at all is added in `home/openclaw.nix`, because
+  upstream's unit ships without one.
+
+Secrets are runtime files under `/var/lib/openclaw-secrets` (dir created by
+tmpfiles, contents written once by hand), matching the repo's
+`mutableUsers = true` stance — nothing secret in git, nothing in the store.
+Before the first `sys-pull` on a fresh box:
+
+```
+install -m600 /dev/stdin /var/lib/openclaw-secrets/telegram-bot-token <<< '<BotFather token>'
+openssl rand -hex 32 | install -m600 /dev/stdin /var/lib/openclaw-secrets/gateway-token
+```
+
+Then replace the placeholder `allowFrom` Telegram user id in
+`home/openclaw.nix` — an unedited list means the bot ignores every message.
+
+### openclaw one-time steps
+
+Two things are runtime state, not rebuild output, and both are per-machine:
+
+1. **`claude` login as rvo.** Claude runs on the subscription, not an API key.
+   Anthropic blocks subscription OAuth for third-party apps; the sanctioned
+   path is reusing a Claude Code login on the same host, so the config keeps
+   the canonical `anthropic/claude-opus-5` reference and sets
+   `agents.defaults.models."anthropic/claude-opus-5".agentRuntime.id =
+   "claude-cli"`. Run `claude` once as rvo and log in — until then every
+   Anthropic turn fails. Never set `ANTHROPIC_API_KEY` on this host: it
+   silently flips the CLI to pay-as-you-go API billing.
+2. **Whisper weights.** The first voice message downloads `ggml-small.bin`
+   (~500MB) into `~/.cache/whisper-cpp`, so that first reply is slow. Warm it
+   with `openclaw-transcribe <some.ogg>`.
+
+### Voice notes
+
+Inbound audio is transcribed locally by a `writeShellApplication` wrapper
+(`home/openclaw.nix`) around ffmpeg + whisper.cpp, wired in as an explicit
+`tools.media.models` CLI entry. Explicit rather than relying on OpenClaw's
+auto-detection, which would otherwise reach for a cloud provider first.
+`echoTranscript` is on so a misheard note is visible. The ggml model is not in
+nixpkgs, hence the runtime download above; change `whisperModel` in
+`home/openclaw.nix` to trade accuracy for speed.
+
+Models: Anthropic (via the CLI, see above) is primary, with a LAN ollama at
+`http://10.0.0.234:11434` declared as a second provider. No model list is
+pinned for it — run `openclaw models list` and reference tags as
+`ollama/<tag>`.
+
+### Network exposure
+
+The gateway binds the LAN address (`gateway.bind = "lan"`), so the control UI
+is reachable at `https://<host-ip>:18789` from the network.
+`modules/services/openclaw.nix` opens 18789 to `10.0.0.0/24` only, via
+`networking.firewall.extraCommands` (`allowedTCPPorts` cannot express a source
+restriction). Three things to know:
+
+- OpenClaw refuses a non-loopback bind without token or password auth, so
+  `gateway.auth` is load-bearing, not decoration.
+- **https, not http.** The control UI authenticates browsers by device
+  identity, which needs a secure context; over plain http to a LAN IP it hangs
+  on "device identity required" regardless of the token. Hence
+  `gateway.tls.autoGenerate` — self-signed, so expect a one-time cert
+  interstitial per browser. The old `controlUi.allowInsecureAuth` escape hatch
+  is gone from the schema and had stopped working before that.
+- Tailscale (`bind = "tailnet"` + `tailscale.mode = "serve"`) or a
+  TLS-terminating proxy is the clean version and removes the `tls` block. An
+  ssh tunnel to localhost needs none of it — loopback devices auto-approve.
+
+Service: `systemctl --user status openclaw-gateway`, logs at
+`~/.openclaw/logs/`.
+
+**Schema drift is real.** nix-openclaw regenerates
+`nix/generated/openclaw-config-options.nix` from upstream OpenClaw, and keys
+move or vanish between releases (`gateway.controlUi.allowInsecureAuth` did).
+When `nix flake check` reports an option that "does not exist", check the
+generated file in the locked input rather than the upstream docs — the docs lag
+and still reference removed options.
 
 ## Design docs
 
