@@ -193,5 +193,25 @@
 
     # Playwright browser for project dev servers.
     ungoogled-chromium
+
+    # Ghostty's terminfo entry, for SSH *into* this box from a Ghostty
+    # terminal. Ghostty sets TERM=xterm-ghostty and points TERMINFO at its own
+    # store path, which is what makes it work locally — but TERM travels over
+    # SSH and TERMINFO does not, so the remote looks up an entry it has never
+    # heard of. ncurses' bundled database does not carry it. The result is a
+    # session where clear/tput fail and every full-screen program (nvim, tmux,
+    # htop, less) is subtly or completely broken.
+    #
+    # This is the `terminfo` output only: one 5KB file, no dependencies. The
+    # `out` output (the actual terminal) is a GUI app and has no business on a
+    # headless VM — and installing it would not help anyway, since
+    # `meta.outputsToInstall` is just [ "out" ], so `pkgs.ghostty` never brings
+    # the terminfo along. That is also why home/gui.nix's `pkgs.ghostty` does
+    # not cover this.
+    #
+    # It lands in /run/current-system/sw/share/terminfo, which NixOS already
+    # has in TERMINFO_DIRS. In base.nix rather than one host because every host
+    # here is something we SSH into.
+    ghostty.terminfo
   ];
 }
