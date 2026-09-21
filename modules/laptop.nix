@@ -124,6 +124,25 @@
   # login they can't see.
   security.pam.services.sshd.fprintAuth = false;
 
+  # Mic-mute LED. The kernel mirrors it from the ALC257's headset-jack switch,
+  # but the internal mic is a DMIC on the acp63 card with no mixer controls, so
+  # PipeWire's software mute never reaches it. alsa-ucm-conf's HDA profile fixes
+  # that (virtual "Mic ACP LED Capture Switch", re-attached to the LED) in a
+  # UCM boot sequence that only a root `alsactl init` runs — other distros do
+  # it from alsa-utils' udev rule, NixOS has none (enablePersistence passes
+  # -U, no UCM). Trigger on either internal PCI card since the HDA profile
+  # needs acp63 present and that registers last; flock keeps the two udev
+  # workers from interleaving. SUBSYSTEMS=="pci" excludes USB headsets.
+  services.udev.extraRules =
+    let
+      alsactl = lib.getExe' pkgs.alsa-utils "alsactl";
+      flock = lib.getExe' pkgs.util-linux "flock";
+    in
+    ''
+      ACTION=="add", SUBSYSTEM=="sound", KERNEL=="controlC*", SUBSYSTEMS=="pci", \
+        RUN+="${flock} /run/lock/alsa-ucm-init ${alsactl} init"
+    '';
+
   # CLI helpers: backlight control (niri brightness keybinds shell out to
   # brightnessctl) and power debugging.
   environment.systemPackages = with pkgs; [
