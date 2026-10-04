@@ -41,6 +41,8 @@
   # Newer kernel for recent AMD Phoenix silicon (GPU/Wi-Fi/power).
   boot.kernelPackages = pkgs.linuxPackages_latest;
 
+  boot.supportedFilesystems = [ "nfs" ];
+
   networking.hostName = "laptop";
 
   # Real timezone for a mobile host (base.nix defaults to UTC via mkDefault;
