@@ -2,9 +2,13 @@
 
 # System-side desktop: niri compositor + DMS panel/shell + greetd login.
 # Uses the nixpkgs path per DMS docs (https://danklinux.com/docs/dankmaterialshell/nixos):
-# nixpkgs ships both programs.niri and programs.dms-shell as first-class options
-# in 26.05. DMS owns ~/.config/niri/* as user-mutable state — populated once per
+# nixpkgs ships both programs.niri and programs.dux-shell as first-class options.
+# DMS owns ~/.config/niri/* as user-mutable state — populated once per
 # VM via `dms setup niri` (interactive TUI) after install.
+#
+# Dank Linux was renamed to Dux Labs in 26.11 (shell/greeter v2.0.0): the
+# options and packages are dux-*, but the `dms` binary, the dms.service user
+# unit and the dms-greeter system user kept their names — hence the mix below.
 {
   programs.niri.enable = true;
 
@@ -24,7 +28,7 @@
     })
   ];
 
-  programs.dms-shell = {
+  programs.dux-shell = {
     enable = true;
     systemd = {
       enable = true;
@@ -71,7 +75,7 @@
   # the base portal module in ../desktop.nix enables xdg-desktop-portal.
 
   # DankGreeter — owns services.greetd itself, so no greetd block here.
-  services.displayManager.dms-greeter = {
+  services.displayManager.dux-greeter = {
     enable = true;
     compositor.name = "niri";
 

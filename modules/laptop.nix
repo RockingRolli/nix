@@ -107,14 +107,21 @@
 
   # Fingerprint reader (T14s Gen4 AMD ships a Goodix sensor). Enrol once with
   # `fprintd-enroll`; harmless if unsupported (fprintd just finds no device).
-  # Enabling it defaults security.pam.services.*.fprintAuth to true, so login,
-  # sudo and greetd all accept a fingerprint. This module is laptop-only, which
-  # is what keeps pam_fprintd off sensorless hosts.
+  # Enabling it defaults security.pam.services.*.fprintAuth to true, so sudo,
+  # polkit etc. accept a fingerprint. This module is laptop-only, which is what
+  # keeps pam_fprintd off sensorless hosts.
   services.fprintd.enable = true;
 
-  # DankGreeter offers fingerprint when it finds pam_fprintd in
-  # /etc/pam.d/greetd. Stated explicitly so it doesn't rest on the default.
-  security.pam.services.greetd.fprintAuth = true;
+  # ...but not at login. The login keyring is encrypted with the password, so
+  # a fingerprint login leaves it locked: pam_fprintd is `sufficient` and ends
+  # the stack before pam_gnome_keyring sees a password. Brave then starts
+  # without its Safe Storage key and drops cookies it can't decrypt.
+  # This has to be `login`, not `greetd`: nixpkgs' greetd stack has
+  # useDefaultRules = false and only substacks login, so greetd.fprintAuth is
+  # a no-op. Covers greeter and TTY. The DMS lock screen is unaffected — it
+  # derives its password stack from login with fprintd stripped and runs
+  # fingerprint through its own bundled config.
+  security.pam.services.login.fprintAuth = false;
 
   # ...but not over the network. base.nix disables password and
   # keyboard-interactive auth, so sshd never reaches its PAM auth stack today —

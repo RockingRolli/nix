@@ -23,7 +23,7 @@ modules/
   base.nix                 # nix-ld, user, ssh, podman, firewall, flakes, sudo rules
   desktop.nix              # GUI base: pipewire, polkit, networkmanager, fonts, dconf, xdg-portal
   desktop/
-    niri.nix               # programs.niri.enable + programs.dms-shell.enable + tuigreet login
+    niri.nix               # programs.niri.enable + programs.dux-shell.enable + tuigreet login
     vm.nix                 # spice-vdagentd + qemuGuest (guest-side conveniences)
   laptop.nix               # imports desktop + mobility extras (stub)
   services/
