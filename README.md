@@ -32,9 +32,10 @@ modules/
 home/
   common.nix               # shared user config: fish + dev tools + Claude Code
   gui.nix                  # GUI HM additions on top of common: ghostty + GTK/Qt theming
+  gaming.nix               # Lutris, on top of modules/gaming.nix
 hosts/
   proj-api.nix             # base + code-server (one-off, headless)
-  desktop-work.nix         # base + workstation + desktop/niri (GMKtec NucBox K12)
+  desktop-work.nix         # base + workstation + desktop/niri + gaming (GMKtec NucBox K12)
   dev-desktop.nix          # base + desktop + desktop/niri + desktop/vm (GUI VM)
   hardware/
     proj-api.nix

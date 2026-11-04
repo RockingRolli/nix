@@ -1,11 +1,12 @@
 { config, pkgs, lib, ... }:
 
 # Steam + Proton. Only for bare-metal hosts with a real GPU and a display —
-# imported by hosts/laptop.nix. The headless dev VMs and dev-desktop (a guest,
-# so no direct GPU) do not import this.
+# imported by hosts/desktop-work.nix, which layers Lutris on top with
+# ../home/gaming.nix. The headless dev VMs and dev-desktop (a guest, so no
+# direct GPU) do not import this.
 #
-# Assumes ../desktop.nix is also imported (pipewire, graphics, portals) — on
-# laptop.nix that comes in via ../modules/laptop.nix.
+# Assumes ../desktop.nix is also imported (pipewire, graphics, portals) — that
+# comes in via ./workstation.nix.
 {
   # Steam is unfree. Scoped to exactly the two steam derivations instead of a
   # blanket nixpkgs.config.allowUnfree, so importing this module doesn't
@@ -54,7 +55,7 @@
   # gamemode: switches the CPU governor to performance and renices the game for
   # the duration of a run, then puts everything back. Use as a launch option:
   #   gamemoderun %command%
-  # Cooperates with power-profiles-daemon (enabled in modules/laptop.nix).
+  # Cooperates with power-profiles-daemon (enabled in modules/workstation.nix).
   programs.gamemode.enable = true;
 
   # Note on memory: Proton's shader pre-caching forks one compile job per core,

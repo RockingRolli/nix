@@ -9,6 +9,7 @@
     ../modules/workstation.nix     # desktop.nix + firmware/graphics/bluetooth
     ../modules/performance.nix     # zram + build scheduling
     ../modules/desktop/niri.nix
+    ../modules/gaming.nix          # steam + proton-ge + gamescope/gamemode
   ];
 
   boot.loader.systemd-boot.enable = true;
@@ -22,10 +23,11 @@
 
   time.timeZone = "Europe/Berlin";
 
-  # GUI host: layer gui.nix on top of common.nix.
+  # GUI host: layer gui.nix on top of common.nix, plus Lutris.
   home-manager.users.rvo.imports = [
     ../home/common.nix
     ../home/gui.nix
+    ../home/gaming.nix
   ];
 
   system.stateVersion = "26.05";
