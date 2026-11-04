@@ -12,6 +12,17 @@
   # place and reload, no rebuild needed.
   home.packages = [ pkgs.ghostty ];
 
+  # Video player. auto-safe picks VA-API on the laptop's Radeon 780M (decode
+  # on the GPU, easier on the battery) and falls back to software decoding
+  # wherever that isn't available, e.g. the dev-desktop VM.
+  # Default apps are deliberately not set here: xdg.mimeApps would take over
+  # ~/.config/mimeapps.list, which is hand-maintained. mpv is the only video
+  # handler installed, so it is picked anyway.
+  programs.mpv = {
+    enable = true;
+    config.hwdec = "auto-safe";
+  };
+
   # GTK theming. Apps following xdg-desktop-portal honour these.
   gtk = {
     enable = true;
