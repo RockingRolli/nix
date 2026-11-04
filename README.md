@@ -25,7 +25,8 @@ modules/
   desktop/
     niri.nix               # programs.niri.enable + programs.dux-shell.enable + tuigreet login
     vm.nix                 # spice-vdagentd + qemuGuest (guest-side conveniences)
-  laptop.nix               # imports desktop + mobility extras (stub)
+  workstation.nix          # imports desktop + bare-metal bits: firmware, graphics, power, fwupd, bluetooth
+  laptop.nix               # imports workstation + mobility extras
   services/
     code-server.nix        # OPTIONAL: services.code-server on 127.0.0.1
 home/
@@ -33,11 +34,11 @@ home/
   gui.nix                  # GUI HM additions on top of common: ghostty + GTK/Qt theming
 hosts/
   proj-api.nix             # base + code-server (one-off, headless)
-  tepavi-dev.nix           # base only (one-off, headless)
+  desktop-work.nix         # base + workstation + desktop/niri (GMKtec NucBox K12)
   dev-desktop.nix          # base + desktop + desktop/niri + desktop/vm (GUI VM)
   hardware/
     proj-api.nix
-    tepavi-dev.nix
+    desktop-work.nix
     dev-desktop.nix        # placeholder until install regenerates
 ```
 
@@ -51,7 +52,7 @@ modules that host needs) plus its hostname and bootloader. `mkHost` in
 
 ```
 nixos-rebuild switch --flake github:RockingRolli/nix#proj-api
-nixos-rebuild switch --flake github:RockingRolli/nix#tepavi-dev
+nixos-rebuild switch --flake github:RockingRolli/nix#desktop-work
 ```
 
 Local iteration (cloned repo):
@@ -75,11 +76,11 @@ as if the file does not exist.
 
 ## Adding/removing a feature
 
-A host file is just an imports list. Add code-server to `tepavi-dev`:
+A host file is just an imports list. Add code-server to `desktop-work`:
 
 ```nix
 imports = [
-  ./hardware/tepavi-dev.nix
+  ./hardware/desktop-work.nix
   ../modules/base.nix
   ../modules/services/code-server.nix
 ];

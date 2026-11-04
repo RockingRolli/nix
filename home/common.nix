@@ -87,7 +87,7 @@
         ControlPersist = "no";
         KexAlgorithms = "^sntrup761x25519-sha512,sntrup761x25519-sha512@openssh.com";
       };
-      "proj-api tepavi-dev dev-desktop".ForwardAgent = true;
+      "proj-api desktop-work dev-desktop".ForwardAgent = true;
     };
   };
 

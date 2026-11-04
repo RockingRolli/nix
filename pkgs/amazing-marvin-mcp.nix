@@ -1,6 +1,6 @@
 {
   lib,
-  python3Packages,
+  python3,
   fetchPypi,
 }:
 
@@ -22,6 +22,17 @@
 # `fastapi` and `uvicorn` are declared by upstream but unused by the stdio
 # entry point. They stay in propagatedBuildInputs so the dist-info runtime
 # dependency check passes rather than being patched out.
+#
+# fastmcp 3.x does not support mcp 2.x, and nixpkgs marks it broken while `mcp`
+# points there. Pin mcp_1 for this package's python set only; drop the override
+# once nixpkgs carries a fastmcp that takes mcp 2.x.
+let
+  python = python3.override {
+    self = python;
+    packageOverrides = self: super: { mcp = self.mcp_1; };
+  };
+  python3Packages = python.pkgs;
+in
 python3Packages.buildPythonApplication rec {
   pname = "amazing-marvin-mcp";
   version = "1.0.1";

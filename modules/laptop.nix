@@ -1,12 +1,10 @@
 { config, pkgs, lib, ... }:
 
-# Laptop-class host: desktop base + mobility/power/firmware bits for a
-# bare-metal ThinkPad (T14s Gen4 AMD, Phoenix / Radeon 780M). Because this is
-# real hardware it imports desktop.nix but NOT desktop/vm.nix (that module is
-# spice/qemu-guest guest conveniences only relevant inside a hypervisor).
+# Laptop-class host: workstation base + mobility/power bits for a bare-metal
+# ThinkPad (T14s Gen4 AMD, Phoenix / Radeon 780M).
 {
   imports = [
-    ./desktop.nix
+    ./workstation.nix
 
     # PAM is sequential: pam_fprintd runs first and blocks until it gives up,
     # and only then does pam_unix get to ask for a password. Its defaults
@@ -38,24 +36,6 @@
     }
   ];
 
-  # Redistributable firmware for the Wi-Fi/Bluetooth combo card and the iGPU.
-  hardware.enableRedistributableFirmware = true;
-
-  # GPU acceleration for the AMD Radeon 780M iGPU. niri/quickshell render
-  # through this; 32-bit support for the occasional 32-bit GL app.
-  hardware.graphics = {
-    enable = true;
-    enable32Bit = true;
-  };
-
-  # Power management. power-profiles-daemon (NOT tlp — they conflict, pick one)
-  # so the DMS panel's power-profile switch has a backend to talk to.
-  services.power-profiles-daemon.enable = true;
-  powerManagement.enable = true;
-
-  # Battery percentage / charge state for the DMS panel indicator.
-  services.upower.enable = true;
-
   # Cap charging at 80%. A lithium cell held at full charge ages markedly
   # faster than one parked around 80, and a dev laptop spends most of its life
   # on AC — so the runtime traded away is mostly runtime that never gets used.
@@ -84,16 +64,6 @@
         echo 80 > "$bat/charge_control_end_threshold"
       fi
     '';
-  };
-
-  # LVFS firmware updates — ThinkPads are well supported here
-  # (`fwupdmgr refresh && fwupdmgr update`).
-  services.fwupd.enable = true;
-
-  # Bluetooth (Qualcomm combo card).
-  hardware.bluetooth = {
-    enable = true;
-    powerOnBoot = true;
   };
 
   # Touchpad: tap-to-click + natural scrolling.

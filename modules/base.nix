@@ -190,6 +190,7 @@
     btop
     ncdu
     atuin
+    pciutils
 
     # Playwright browser for project dev servers.
     ungoogled-chromium

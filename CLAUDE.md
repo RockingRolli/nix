@@ -86,14 +86,19 @@ hostname and bootloader.
   host imports **exactly one** (they're mutually exclusive — both own the
   `docker` CLI and daemon socket, so importing both is a build-time conflict).
   `docker.nix` (Docker + compose v2) is used by `laptop`, `dev-desktop`,
-  `tepavi-dev`, and `openclaw`; `podman.nix` (with `dockerCompat`) remains on
+  `desktop-work`, and `openclaw`; `podman.nix` (with `dockerCompat`) remains on
   `proj-api`. The
   `d`/`dc` fish functions in
   `home/common.nix` detect the runtime at shell startup, so the one shared home
   config works on both.
-- `modules/desktop.nix` → `modules/desktop/niri.nix` + `desktop/vm.nix` — GUI
-  layer (only `dev-desktop` uses it). Compositor config is system-side here;
-  user-side theming is separate.
+- `modules/desktop.nix` + `modules/desktop/niri.nix` — GUI layer, used by
+  `dev-desktop`, `desktop-work`, and `laptop`. Compositor config is system-side
+  here; user-side theming is separate. `dev-desktop` adds `desktop/vm.nix`
+  (guest conveniences).
+- `modules/workstation.nix` — `desktop.nix` plus what bare metal needs whatever
+  its form factor (firmware, graphics, power, fwupd, bluetooth). `desktop-work` imports
+  it directly; `modules/laptop.nix` imports it and adds battery, touchpad,
+  fingerprint and other ThinkPad bits.
 - `home/common.nix` — the user-config constant imported by every host AND by the
   standalone `homeConfigurations.rvo`. fish + dev tools + git + Claude Code.
 - `home/gui.nix` — GUI-only home-manager additions, layered on top of
@@ -115,7 +120,7 @@ hosts add `gui.nix`. `home/common.nix` is wired into NixOS hosts via
 can layer `gui.nix` without affecting headless hosts.
 
 **Adding/removing a feature** = editing a host's imports list. To add code-server
-to `tepavi-dev`, add `../modules/services/code-server.nix` to its imports. To drop
+to `desktop-work`, add `../modules/services/code-server.nix` to its imports. To drop
 a service, delete its import line.
 
 ## Conventions specific to this repo
@@ -143,6 +148,10 @@ populate `~/.config/niri/`. DMS owns that directory as user-mutable state; Home
 Manager does not write it.
 
 ## openclaw host
+
+**Currently disabled:** commented out of `nixosConfigurations` in `flake.nix`
+because its build fails (see the comment there). The files below are kept;
+uncomment that line to bring it back.
 
 Runs an OpenClaw agent (Telegram in, tools out) as a systemd **user** service
 under `rvo`. Packaging comes from the `nix-openclaw` flake input — openclaw is

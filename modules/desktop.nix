@@ -1,8 +1,8 @@
 { config, pkgs, lib, ... }:
 
-# GUI base for every host with a display. Headless hosts (proj-api,
-# tepavi-dev) do not import this; GUI hosts (dev-desktop, future laptop) do,
-# either directly or via ./laptop.nix.
+# GUI base for every host with a display. Headless hosts (proj-api) do not
+# import this; GUI hosts do, either directly (dev-desktop) or via
+# ./workstation.nix (desktop-work, laptop).
 {
   # Audio. DMS reads PipeWire state for per-app volume in the panel.
   services.pipewire = {
