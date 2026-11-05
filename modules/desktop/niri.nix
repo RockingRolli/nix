@@ -42,6 +42,36 @@ in
     })
   ];
 
+  # Locked in the browser UI; check with brave://policy. Not programs.chromium.extraOpts,
+  # which would apply these to Chromium and Chrome as well. Booleans, not the 0/1 in
+  # Brave's docs.
+  environment.etc."brave/policies/managed/debloat.json".text = builtins.toJSON {
+    # Features
+    BraveVPNDisabled = true;
+    BraveWalletDisabled = true;
+    BraveRewardsDisabled = true;
+    BraveAIChatEnabled = false;
+    BraveNewsDisabled = true;
+    BraveTalkDisabled = true;
+    BravePlaylistEnabled = false;
+    TorDisabled = true;
+
+    # Data sent to Brave
+    BraveP3AEnabled = false;
+    BraveStatsPingEnabled = false;
+    BraveWebDiscoveryEnabled = false;
+
+    # Nagging and background activity
+    DefaultBrowserSettingEnabled = false;
+    PromotionsEnabled = false;
+    BackgroundModeEnabled = false;
+
+    # Bitwarden handles these
+    PasswordManagerEnabled = false;
+    AutofillAddressEnabled = false;
+    AutofillCreditCardEnabled = false;
+  };
+
   programs.dux-shell = {
     enable = true;
     systemd = {
