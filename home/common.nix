@@ -70,15 +70,19 @@
   # `settings` attr names are `Host` patterns. enableDefaultConfig is turned off
   # and its old defaults pinned under "*" explicitly (per the home-manager
   # module docs) so no deprecation warnings fire on rebuild.
+  #
+  # Actual hosts live in ~/dotfiles/ssh/hosts, synced rather than kept in this
+  # public repo. A missing include is skipped, so hosts without it are fine.
   programs.ssh = {
     enable = true;
     enableDefaultConfig = false;
+    includes = [ "~/dotfiles/ssh/hosts" ];
     settings = {
       "*" = {
         ForwardAgent = false;
         AddKeysToAgent = "yes";
         Compression = false;
-        ServerAliveInterval = 0;
+        ServerAliveInterval = 30;
         ServerAliveCountMax = 3;
         HashKnownHosts = false;
         UserKnownHostsFile = "~/.ssh/known_hosts";

@@ -206,6 +206,24 @@ Activation stops if `dms/settings.json` or `niri/dms/outputs.kdl` is missing fro
 settings. To undo the sync on a machine, drop the import, rebuild, and move the two
 folders back to `~/.config`.
 
+## SSH
+
+`programs.ssh` in `home/common.nix` holds general behaviour only. Actual hosts live
+in `~/dotfiles/ssh/hosts`, included from the generated config, to keep them out of
+this public repo. A mistake in that file breaks `ssh` on every machine that has it,
+straight away and with no rebuild, so check it with `ssh -G <host>` after editing.
+
+- `IdentitiesOnly` is set in the hosts file, not here, because it also limits
+  forwarded agents. Hosts without that file, like the VMs, have no key files and
+  rely on every forwarded key being offered.
+- With it on, a host with no rule only gets the fallback keys under `Host *` in that
+  file. Add a rule for anything needing another key.
+- `home/gui.nix` runs a second agent, `ssh-agent-tepavi`, so a compromised server
+  reached with agent forwarding can only use the keys in that agent. Hosts select
+  it with `IdentityAgent` and `ForwardAgent`. Its keys get added on first use.
+- Those two options need `${XDG_RUNTIME_DIR}/name.sock`. Without the braces, a value
+  starting with `$` is read as a bare variable name, which is a config error.
+
 ## openclaw host
 
 **Currently disabled:** commented out of `nixosConfigurations` in `flake.nix`
