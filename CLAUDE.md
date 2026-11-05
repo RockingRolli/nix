@@ -151,9 +151,10 @@ Manager does not write it.
 
 ## Dux Files one-time step
 
-On each GUI host, add the floating rule for its open/save dialogs to
-`~/.config/niri/config.kdl`, above the DMS includes. It can't be declared here
-because DMS owns that directory, and `dms/windowrules.kdl` gets rewritten by DMS:
+Add the floating rule for its open/save dialogs to `~/.config/niri/config.kdl`,
+above the DMS includes. It can't be declared here because DMS owns that directory,
+and `dms/windowrules.kdl` gets rewritten by DMS. Hosts using the dotfiles sync below
+get it from there, so this only applies to `dev-desktop`:
 
 ```
 window-rule {
@@ -161,6 +162,49 @@ window-rule {
     open-floating true
 }
 ```
+
+## Dotfiles sync
+
+DMS and niri config is user-mutable, so it can't be declared here. On hosts that
+import `home/dotfiles.nix`, `~/.config/dms` and `~/.config/niri` are symlinks into
+`~/dotfiles`, which Syncthing (`modules/services/syncthing.nix`) syncs through a
+server. Whole folders are linked because DMS adds files often; new files sync by
+default and only the exceptions are listed.
+
+Devices and folders are paired by hand in the web UI, so no device IDs land in this
+public repo. `overrideDevices` and `overrideFolders` must stay off, or Syncthing
+deletes that pairing. `.stignore` is not synced either, so each machine needs its
+own copy of `~/dotfiles/.stignore` before its first sync:
+
+```
+// Per machine: the applied monitor layout
+/niri/dms/outputs.kdl
+// Generated from the theme
+/niri/dms/colors.kdl
+// Cloned plugin code, 4 MB including Git data
+/dms/plugins
+// Rollback copies DMS keeps piling up
+/niri/config.kdl.backup*
+/niri/config.kdl.dmsbackup*
+// Leftovers from interrupted saves
+*.tmp
+```
+
+Adding a machine, in this order:
+
+1. Enable Syncthing, add the `.stignore`, pair, and wait for the files to arrive.
+   Do not import `home/dotfiles.nix` yet.
+2. Back up its `~/.config/dms` and `~/.config/niri`.
+3. Copy its own `niri/dms/outputs.kdl`, `niri/dms/colors.kdl` and `dms/plugins` into
+   `~/dotfiles`. They are ignored, so they never arrive by sync, and `config.kdl`
+   includes the first two.
+4. Stop DMS, remove the two real folders, add the import and rebuild. Its other
+   settings are replaced by what was synced.
+
+Activation stops if `dms/settings.json` or `niri/dms/outputs.kdl` is missing from
+`~/dotfiles`: dangling links could make DMS write defaults that sync over the good
+settings. To undo the sync on a machine, drop the import, rebuild, and move the two
+folders back to `~/.config`.
 
 ## openclaw host
 

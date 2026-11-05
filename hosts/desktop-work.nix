@@ -10,6 +10,7 @@
     ../modules/performance.nix     # zram + build scheduling
     ../modules/desktop/niri.nix
     ../modules/gaming.nix          # steam + proton-ge + gamescope/gamemode
+    ../modules/services/syncthing.nix
   ];
 
   boot.loader.systemd-boot.enable = true;
@@ -28,6 +29,7 @@
     ../home/common.nix
     ../home/gui.nix
     ../home/gaming.nix
+    ../home/dotfiles.nix
   ];
 
   system.stateVersion = "26.05";
