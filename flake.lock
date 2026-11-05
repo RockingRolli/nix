@@ -21,6 +21,43 @@
         "type": "github"
       }
     },
+    "dank-qml-common": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1793739121,
+        "narHash": "sha256-tuZawVduVTBkUo2e5SrmA5tGEVEHZiIPqbOUwA007H4=",
+        "owner": "duxlabs-dev",
+        "repo": "dux-qml-common",
+        "rev": "69971fe7203deaca031d04c434b3fcc016a2fb9e",
+        "type": "github"
+      },
+      "original": {
+        "owner": "duxlabs-dev",
+        "repo": "dux-qml-common",
+        "type": "github"
+      }
+    },
+    "dfiles": {
+      "inputs": {
+        "dank-qml-common": "dank-qml-common",
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1793804205,
+        "narHash": "sha256-9zFMtgyUv5ClCrLqPv1Yq2RFvwLMf7cGJh4Du3Yw1nY=",
+        "owner": "duxlabs-dev",
+        "repo": "dux-files",
+        "rev": "ce524798abf8d09ef9e427141b11c8eb0fc5b6e3",
+        "type": "github"
+      },
+      "original": {
+        "owner": "duxlabs-dev",
+        "repo": "dux-files",
+        "type": "github"
+      }
+    },
     "flake-utils": {
       "inputs": {
         "systems": "systems_2"
@@ -165,6 +202,7 @@
     "root": {
       "inputs": {
         "claude-code-nix": "claude-code-nix",
+        "dfiles": "dfiles",
         "home-manager": "home-manager",
         "nix-openclaw": "nix-openclaw",
         "nixpkgs": "nixpkgs_2"

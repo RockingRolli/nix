@@ -1,4 +1,4 @@
-{ config, pkgs, lib, ... }:
+{ config, pkgs, lib, dfiles, ... }:
 
 # System-side desktop: niri compositor + DMS panel/shell + greetd login.
 # Uses the nixpkgs path per DMS docs (https://danklinux.com/docs/dankmaterialshell/nixos):
@@ -9,7 +9,19 @@
 # Dank Linux was renamed to Dux Labs in 26.11 (shell/greeter v2.0.0): the
 # options and packages are dux-*, but the `dms` binary, the dms.service user
 # unit and the dms-greeter system user kept their names — hence the mix below.
+let
+  # NixOS units get a minimal PATH, and the resident Dux apps resolve everything
+  # they launch (mpv, ghostty, pkexec, xdg-open, qs) from it. Without these,
+  # opening a file from the resident instance fails.
+  duxServicePath = [
+    "/run/wrappers"
+    "/etc/profiles/per-user/rvo"
+    "/run/current-system/sw"
+  ];
+in
 {
+  imports = [ dfiles.nixosModules.dux-files ];
+
   programs.niri.enable = true;
 
   # (The libdisplay-info 0.3.0 overlay that used to live here is gone: nixpkgs
@@ -19,6 +31,7 @@
 
   environment.systemPackages = with pkgs; [
     xwayland-satellite
+    dux-calendar
 
     # VA-API encode wedges WebRTC on this VCN (remote sees a frozen frame after a
     # minute); repeat the wrapper's own disables since Chromium keeps only the last.
@@ -34,6 +47,41 @@
       enable = true;
       restartIfChanged = true;
     };
+  };
+
+  # File manager and file-chooser backend.
+  programs.dux-files = {
+    enable = true;
+    systemd.enable = true;
+    portal.enable = true;
+  };
+
+  systemd.user.services.dfiles.path = duxServicePath;
+
+  # useNautilus would register Nautilus's org.freedesktop.FileManager1 activation
+  # file, which competes with dfiles for "show in folder". Turning it off makes
+  # nixpkgs set FileChooser = "gtk", hence the mkForce rather than the module's
+  # portal.preferred.
+  programs.niri.useNautilus = false;
+  xdg.portal.config.niri."org.freedesktop.impl.portal.FileChooser" = lib.mkForce "dfiles";
+
+  # Folders and remote locations open in Dux Files. Set system-wide
+  # (/etc/xdg/mimeapps.list) because ~/.config/mimeapps.list is hand-maintained
+  # and still wins over this. Archives are left out: Dux Files is the only
+  # handler installed, so it is picked anyway.
+  xdg.mime.defaultApplications = lib.genAttrs [
+    "inode/directory"
+    "x-scheme-handler/trash"
+    "x-scheme-handler/sftp"
+    "x-scheme-handler/smb"
+  ] (_: "dev.duxlabs.files.desktop");
+
+  # Calendar. nixpkgs has the package but no module, so wire the unit it ships
+  # by hand. Resident because reminders and sync only run while the daemon does.
+  systemd.packages = [ pkgs.dux-calendar ];
+  systemd.user.services.dcal = {
+    wantedBy = [ "graphical-session.target" ];
+    path = duxServicePath;
   };
 
   # Equivalent of `systemctl --user add-wants niri.service dms` from the DMS

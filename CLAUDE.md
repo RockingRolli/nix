@@ -149,6 +149,19 @@ After first login on `dev-desktop`, run `dms setup niri` (interactive TUI) once 
 populate `~/.config/niri/`. DMS owns that directory as user-mutable state; Home
 Manager does not write it.
 
+## Dux Files one-time step
+
+On each GUI host, add the floating rule for its open/save dialogs to
+`~/.config/niri/config.kdl`, above the DMS includes. It can't be declared here
+because DMS owns that directory, and `dms/windowrules.kdl` gets rewritten by DMS:
+
+```
+window-rule {
+    match app-id=r#"^dev\.duxlabs\.files$"# title=r#"^(Open|Save|Select|Upload|Export|Import)"#
+    open-floating true
+}
+```
+
 ## openclaw host
 
 **Currently disabled:** commented out of `nixosConfigurations` in `flake.nix`
