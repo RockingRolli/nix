@@ -71,8 +71,9 @@
   # and its old defaults pinned under "*" explicitly (per the home-manager
   # module docs) so no deprecation warnings fire on rebuild.
   #
-  # Actual hosts live in ~/dotfiles/ssh/hosts, synced rather than kept in this
-  # public repo. A missing include is skipped, so hosts without it are fine.
+  # Actual hosts live in ~/dotfiles/ssh/, synced rather than kept in this public
+  # repo; `hosts` there is an index of them. A missing include is skipped, so
+  # hosts without it are fine.
   programs.ssh = {
     enable = true;
     enableDefaultConfig = false;

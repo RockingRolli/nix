@@ -188,6 +188,8 @@ own copy of `~/dotfiles/.stignore` before its first sync:
 /niri/config.kdl.dmsbackup*
 // Leftovers from interrupted saves
 *.tmp
+// Vim swap files, which hold the contents of whatever is being edited
+.*.swp
 ```
 
 Adding a machine, in this order:
@@ -209,15 +211,18 @@ folders back to `~/.config`.
 ## SSH
 
 `programs.ssh` in `home/common.nix` holds general behaviour only. Actual hosts live
-in `~/dotfiles/ssh/hosts`, included from the generated config, to keep them out of
-this public repo. A mistake in that file breaks `ssh` on every machine that has it,
-straight away and with no rebuild, so check it with `ssh -G <host>` after editing.
+in `~/dotfiles/ssh/`, to keep them out of this public repo. The generated config
+includes `hosts`, an index that includes one file per group. A mistake in any of them
+breaks `ssh` on every machine that has it, straight away and with no rebuild, so
+check with `ssh -G <host>` after editing.
 
-- `IdentitiesOnly` is set in the hosts file, not here, because it also limits
-  forwarded agents. Hosts without that file, like the VMs, have no key files and
-  rely on every forwarded key being offered.
-- With it on, a host with no rule only gets the fallback keys under `Host *` in that
-  file. Add a rule for anything needing another key.
+- Order matters: `IdentityFile` entries add up in the order read, so `generic` has
+  to stay last in the index, or its `Host *` keys get offered before a host's own.
+- `IdentitiesOnly` is set in `generic`, not here, because it also limits forwarded
+  agents. Hosts without that file, like the VMs, have no key files and rely on every
+  forwarded key being offered.
+- With it on, a host with no rule only gets the fallback keys under `Host *`. Add a
+  rule for anything needing another key.
 - `home/gui.nix` runs a second agent, `ssh-agent-tepavi`, so a compromised server
   reached with agent forwarding can only use the keys in that agent. Hosts select
   it with `IdentityAgent` and `ForwardAgent`. Its keys get added on first use.

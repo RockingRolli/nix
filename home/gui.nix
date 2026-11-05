@@ -55,7 +55,7 @@
   fonts.fontconfig.enable = true;
 
   # Separate agent for the Tepavi key, selected per host with IdentityAgent and
-  # ForwardAgent in ~/dotfiles/ssh/hosts. A compromised server then only reaches
+  # ForwardAgent in ~/dotfiles/ssh/tepavi. A compromised server then only reaches
   # this key through agent forwarding, not everything in the main agent. Lives
   # here rather than in home/dotfiles.nix so it exists before a machine's links.
   systemd.user.services.ssh-agent-tepavi = {
