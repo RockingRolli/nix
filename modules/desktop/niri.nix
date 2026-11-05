@@ -32,6 +32,7 @@ in
   environment.systemPackages = with pkgs; [
     xwayland-satellite
     dux-calendar
+    gnome-text-editor
 
     # VA-API encode wedges WebRTC on this VCN (remote sees a frozen frame after a
     # minute); repeat the wrapper's own disables since Chromium keeps only the last.
@@ -74,7 +75,11 @@ in
     "x-scheme-handler/trash"
     "x-scheme-handler/sftp"
     "x-scheme-handler/smb"
-  ] (_: "dev.duxlabs.files.desktop");
+  ] (_: "dev.duxlabs.files.desktop") // lib.genAttrs [
+    # Markdown needs its own entry: the Dux Shell notepad claims it directly.
+    "text/plain"
+    "text/markdown"
+  ] (_: "org.gnome.TextEditor.desktop");
 
   # Calendar. nixpkgs has the package but no module, so wire the unit it ships
   # by hand. Resident because reminders and sync only run while the daemon does.

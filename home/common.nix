@@ -4,7 +4,7 @@
   home.stateVersion = lib.mkDefault "26.05";
 
   home.sessionVariables = {
-    EDITOR = "nvim";
+    EDITOR = "vim";
     PAGER = "less -R";
   };
 
