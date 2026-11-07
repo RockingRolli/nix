@@ -56,6 +56,7 @@
   home-manager.users.rvo.imports = [
     ../home/common.nix
     ../home/gui.nix
+    ../home/raiser.nix
   ];
 
   system.stateVersion = "26.05";

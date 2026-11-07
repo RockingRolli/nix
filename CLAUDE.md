@@ -105,6 +105,9 @@ hostname and bootloader.
   `common.nix` only for GUI hosts.
 - `modules/gaming.nix` + `home/gaming.nix` — Steam, gamescope and gamemode on
   the system side, Lutris on the user side. Only `desktop-work` imports them.
+- `home/raiser.nix` — `raiser` on PATH, linked from the venv in its clone at
+  `~/dev/raiser`, plus its libvirt bindings from nixpkgs via `PYTHONPATH`.
+  Imported by `desktop-work` and `laptop`, and each needs that clone.
 - `modules/services/openclaw.nix` + `home/openclaw.nix` — the OpenClaw agent,
   split the same way: system prerequisites (overlay, linger, secrets dir, the
   openssl/ffmpeg system packages OpenClaw insists on) vs. the user-scoped

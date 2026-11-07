@@ -30,6 +30,7 @@
     ../home/gui.nix
     ../home/gaming.nix
     ../home/dotfiles.nix
+    ../home/raiser.nix
   ];
 
   system.stateVersion = "26.05";
