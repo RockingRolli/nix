@@ -45,10 +45,11 @@
 
   dconf.settings."org/gnome/desktop/interface".color-scheme = "prefer-dark";
 
-  # Qt apps follow the GTK theme so niri prompts, etc., look consistent.
+  # Qt dialogs go through the portal, so file pickers open in Dux Files. The gtk3
+  # theme aborts on opening one, because XDG_DATA_DIRS has no GSettings schemas.
   qt = {
     enable = true;
-    platformTheme.name = "gtk3";
+    platformTheme.name = "xdgdesktopportal";
     style.name = "adwaita-dark";
   };
 

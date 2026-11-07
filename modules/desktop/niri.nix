@@ -138,18 +138,15 @@ in
   # Quickshell (spawned by dms.service) is a Qt app:
   # - QT_QPA_PLATFORM=wayland selects the wayland platform plugin (otherwise
   #   Qt defaults to xcb and quickshell would never connect to the compositor).
-  # - QT_QPA_PLATFORMTHEME is forcibly unset to suppress the qt6gtk2 platform
-  #   theme that home/gui.nix's qt.platformTheme.name="gtk" exports into the
-  #   session — qt6gtk2 is X11-linked and crashes on XOpenDisplay in a pure
-  #   Wayland service environment.
+  # - QT_QPA_PLATFORMTHEME is forcibly unset so quickshell does not pick up the
+  #   platform theme that home/gui.nix's qt.platformTheme.name exports into the
+  #   session. It was added when that theme was X11-linked qt6gtk2, which
+  #   crashed on XOpenDisplay in a pure Wayland service environment.
   systemd.user.services.dms.environment = {
     QT_QPA_PLATFORM = "wayland";
-    # The HM qt.platformTheme.name = "gtk" in home/gui.nix exports
-    # QT_QPA_PLATFORMTHEME=gtk2 into the niri session, which makes
-    # quickshell try to load X11-linked qt6gtk2 and crash on
-    # XOpenDisplay. Override to empty so Qt uses the builtin fusion
-    # theme (Wayland-safe). lib.mkForce because hm-session-vars
-    # exports the value through a different merge channel.
+    # Override to empty so Qt uses the builtin fusion theme (Wayland-safe).
+    # lib.mkForce because hm-session-vars exports the value through a
+    # different merge channel.
     QT_QPA_PLATFORMTHEME = lib.mkForce "";
   };
 
