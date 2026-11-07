@@ -32,6 +32,7 @@
     ../home/dotfiles.nix
     ../home/raiser.nix
   ];
+  home-manager.users.rvo.home.packages = [ pkgs.feather ];
 
   system.stateVersion = "26.05";
 }
