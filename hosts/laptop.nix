@@ -57,6 +57,7 @@
     ../home/common.nix
     ../home/gui.nix
     ../home/raiser.nix
+    ../home/dotfiles.nix
   ];
 
   system.stateVersion = "26.05";
