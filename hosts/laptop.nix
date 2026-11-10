@@ -11,6 +11,7 @@
     ../modules/desktop/niri.nix
     # ../modules/gaming.nix          # steam + proton-ge + gamescope/gamemode
     ../modules/services/syncthing.nix
+    ../modules/services/tailscale.nix
     # note: NOT ../modules/desktop/vm.nix — this is bare metal, not a guest.
   ];
 
