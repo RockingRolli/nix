@@ -28,6 +28,7 @@
     bat
     eza
     jq
+    imagemagick
     yq-go
     gh
     delta
