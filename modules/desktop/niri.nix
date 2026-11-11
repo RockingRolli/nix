@@ -1,4 +1,4 @@
-{ config, pkgs, lib, dfiles, ... }:
+{ config, pkgs, lib, ... }:
 
 # System-side desktop: niri compositor + DMS panel/shell + greetd login.
 # Uses the nixpkgs path per DMS docs (https://danklinux.com/docs/dankmaterialshell/nixos):
@@ -20,8 +20,6 @@ let
   ];
 in
 {
-  imports = [ dfiles.nixosModules.dux-files ];
-
   programs.niri.enable = true;
 
   # (The libdisplay-info 0.3.0 overlay that used to live here is gone: nixpkgs
