@@ -29,16 +29,9 @@
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.home-manager.follows = "home-manager";
     };
-
-    # Dux Files (file manager from the DMS authors). Not in nixpkgs; provides
-    # the programs.dux-files module imported by modules/desktop/niri.nix.
-    dfiles = {
-      url = "github:duxlabs-dev/dux-files";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
   };
 
-  outputs = { self, nixpkgs, home-manager, claude-code-nix, nix-openclaw, dfiles, ... }:
+  outputs = { self, nixpkgs, home-manager, claude-code-nix, nix-openclaw, ... }:
     let
       system = "x86_64-linux";
       pkgs = nixpkgs.legacyPackages.${system};
@@ -55,7 +48,7 @@
       mkHost = hostFile:
         nixpkgs.lib.nixosSystem {
           inherit system;
-          specialArgs = { inherit claude-code-nix nix-openclaw dfiles; };
+          specialArgs = { inherit claude-code-nix nix-openclaw; };
           modules = [
             hostFile
             home-manager.nixosModules.home-manager
