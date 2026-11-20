@@ -14,6 +14,11 @@
   # throwaway images). Access is via the SSH keys from base.nix instead.
   users.users.root.initialHashedPassword = lib.mkForce "!";
 
+  # Identify to DHCP by MAC instead of dhcpcd's DUID, which is generated on
+  # first boot: a recreated VM keeps its MAC (pinned in raiser's tofu/) and
+  # thereby its lease/reservation.
+  networking.dhcpcd.extraConfig = "clientid";
+
   # The profile pulls in profiles/minimal.nix; man pages and fish completions
   # are worth having on a dev box.
   documentation.man.enable = true;
