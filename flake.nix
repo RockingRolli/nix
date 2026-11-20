@@ -62,6 +62,7 @@
         desktop-work = mkHost ./hosts/desktop-work.nix;
         dev-desktop = mkHost ./hosts/dev-desktop.nix;
         laptop = mkHost ./hosts/laptop.nix;
+        incus-dev = mkHost ./hosts/incus-dev.nix;
         # Disabled: nix-openclaw's prebuilt nodejs-24.22.1 fallback segfaults in
         # its install check. It is used while nixpkgs' nodejs_24 is below 24.22.1.
         # openclaw = mkHost ./hosts/openclaw.nix;
